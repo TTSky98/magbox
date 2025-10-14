@@ -1,4 +1,9 @@
 import torch
+from typing import Callable, Tuple, Dict, Any, Optional
+from tqdm import tqdm
+import time
+import warnings
+
 def get_data_type(type):
     if type=="f32":
         data_type=torch.float32
@@ -10,3 +15,395 @@ def get_data_type(type):
         raise ValueError("type must be f16, f32 or f64")
     return data_type
     
+def de_options(self,rel_tol=1e-3,abs_tol=1e-6):
+    self={"rel_tol":rel_tol,"abs_tol":abs_tol}
+    return self
+
+
+def ode_rk45(odeFcn: Callable, tspan: torch.Tensor, y0: torch.Tensor, 
+             options: Optional[Dict[str, Any]] = None) -> Tuple[torch.Tensor, torch.Tensor, Dict, Dict]:
+    """
+    Modified ode45 
+    
+    Parameters:
+    -----------
+    odeFcn : callable
+        ODE function: f(t, y) or f(t, y, dh, rd) for thermal mode
+    tspan : torch.Tensor
+        Time span [t0, t1, ..., tfinal]
+    y0 : torch.Tensor
+        Initial conditions
+    options : dict
+        Options dictionary with keys:
+        - rel_tol = 1e-3 ：relative tolerence
+        - abs_tol = 1e-6 ：absolute tolerence
+        - waitbar = True : whether to show progress
+        - NormControl = 'off' : whether to use norm control
+        - max_consecutive_failures = 10: Maximum number of consecutive step failures
+        
+    Returns:
+    --------
+    T : torch.Tensor
+        Time points
+    Y : torch.Tensor
+        Solution values
+    stats : dict
+        Statistics (nfevals)
+    errInfo : dict
+        Error history and max step error
+    """
+    
+    if options is None:
+        options = {}
+    
+    # Initialize options
+    waitbar = options.get('waitbar', True)
+    
+    # Extract odeset options
+    rtol = options.get('rel_tol', 1e-3)
+    atol = options.get('abs_tol', 1e-6)
+    normcontrol = options.get('NormControl', 'off') == 'on'
+    max_consecutive_failures = options.get('max_consecutive_failures', 10)
+     # Initialize waitbar
+    if waitbar:
+        # Estimate total progress based on time span
+        t0 = tspan[0].item()
+        tfinal = tspan[-1].item()
+        total_progress = tfinal - t0
+        pbar = tqdm(total=total_progress, desc='ODE Integration', 
+                   unit='time', ncols=100, bar_format='{l_bar}{bar}| {n:.2f}/{total_fmt} [{elapsed}<{remaining}]')
+        last_update_time = time.time()
+        update_interval = 0.1  # Update progress bar every 0.1 seconds
+    
+    # Initialize solution storage
+    t0 = tspan[0]
+    tfinal = tspan[-1]
+    tdir = torch.sign(tfinal - t0)
+    
+    # Ensure y0 is 1D tensor
+    original_shape = y0.shape
+    y0 = y0.reshape(-1)
+    neq = y0.shape[0]
+    
+    # Data type
+    dtype = y0.dtype
+    device = y0.device
+    
+    # Step size constraints
+    hmin = 16 * torch.finfo(dtype).eps
+    hmin=torch.tensor(hmin,dtype=dtype,device=device)
+    safehmax = 16.0 * torch.finfo(dtype).eps * torch.max(torch.abs(t0), torch.abs(tfinal))
+    defaulthmax = torch.max(0.1 * torch.abs(tfinal - t0), safehmax)
+    hmax = torch.min(torch.abs(tfinal - t0), 
+                    torch.tensor(options.get('MaxStep', defaulthmax.item()), dtype=dtype, device=device))
+    threshold = torch.tensor(atol, dtype=dtype, device=device)
+    if normcontrol:
+        normy = torch.norm(y0)
+    else:
+        normy = torch.tensor(0.0, dtype=dtype, device=device)
+    
+    t = t0.clone()
+    y = y0.clone()
+    
+    # Output configuration
+    ntspan = tspan.shape[0]
+    refine = options.get('Refine', 4)
+    
+    if ntspan > 2:
+        outputAt = 1  # output only at tspan points
+    elif refine <= 1:
+        outputAt = 2  # computed points, no refinement
+    else:
+        outputAt = 3  # computed points, with refinement
+        S = torch.linspace(1/refine, 1 - 1/refine, refine - 1, dtype=dtype, device=device)
+    
+    # Initialize output arrays
+    if ntspan > 2:
+        tout = torch.zeros(ntspan, dtype=dtype, device=device)
+        yout = torch.zeros(neq, ntspan, dtype=dtype, device=device)
+    else:
+        chunk = min(max(100, 50 * refine), refine + (2**13) // neq)
+        tout = torch.zeros(chunk, dtype=dtype, device=device)
+        yout = torch.zeros(neq, chunk, dtype=dtype, device=device)
+    
+    nout = 0
+    tout[nout] = t
+    yout[:, nout] = y
+    
+    errHistory = []
+    nfevals = 0
+    nsteps = 0
+    
+    # Dormand-Prince coefficients
+    a2 = torch.tensor(1/5, dtype=dtype, device=device)
+    a3 = torch.tensor(3/10, dtype=dtype, device=device)
+    a4 = torch.tensor(4/5, dtype=dtype, device=device)
+    a5 = torch.tensor(8/9, dtype=dtype, device=device)
+    
+    b11 = torch.tensor(1/5, dtype=dtype, device=device)
+    b21 = torch.tensor(3/40, dtype=dtype, device=device)
+    b31 = torch.tensor(44/45, dtype=dtype, device=device)
+    b41 = torch.tensor(19372/6561, dtype=dtype, device=device)
+    b51 = torch.tensor(9017/3168, dtype=dtype, device=device)
+    b61 = torch.tensor(35/384, dtype=dtype, device=device)
+    b22 = torch.tensor(9/40, dtype=dtype, device=device)
+    b32 = torch.tensor(-56/15, dtype=dtype, device=device)
+    b42 = torch.tensor(-25360/2187, dtype=dtype, device=device)
+    b52 = torch.tensor(-355/33, dtype=dtype, device=device)
+    b33 = torch.tensor(32/9, dtype=dtype, device=device)
+    b43 = torch.tensor(64448/6561, dtype=dtype, device=device)
+    b53 = torch.tensor(46732/5247, dtype=dtype, device=device)
+    b63 = torch.tensor(500/1113, dtype=dtype, device=device)
+    b44 = torch.tensor(-212/729, dtype=dtype, device=device)
+    b54 = torch.tensor(49/176, dtype=dtype, device=device)
+    b64 = torch.tensor(125/192, dtype=dtype, device=device)
+    b55 = torch.tensor(-5103/18656, dtype=dtype, device=device)
+    b65 = torch.tensor(-2187/6784, dtype=dtype, device=device)
+    b66 = torch.tensor(11/84, dtype=dtype, device=device)
+    
+    e1 = torch.tensor(71/57600, dtype=dtype, device=device)
+    e3 = torch.tensor(-71/16695, dtype=dtype, device=device)
+    e4 = torch.tensor(71/1920, dtype=dtype, device=device)
+    e5 = torch.tensor(-17253/339200, dtype=dtype, device=device)
+    e6 = torch.tensor(22/525, dtype=dtype, device=device)
+    e7 = torch.tensor(-1/40, dtype=dtype, device=device)
+    
+    # Initial function evaluation
+    f1 = odeFcn(t, y)
+    nfevals += 1
+    
+    # Initial step size
+    h = torch.min(hmax, torch.max(hmin, 0.1 * torch.abs(tfinal - t0)))
+    absh = torch.abs(h)
+    
+    done = False
+    next_idx = 1  # for tspan output
+    
+    # Main integration loop
+    consecutive_failures = 0
+    integration_failed= False
+    while not done:
+        # Step size control
+        absh = torch.min(hmax, torch.max(hmin, absh))
+        h = tdir * absh
+        if 1.1 * absh >= torch.abs(tfinal - t):
+            h = tfinal - t
+            absh = torch.abs(h)
+            done = True
+        
+        nofailed = True
+        while True:
+            # RK stages
+            y2 = y + h * (b11 * f1)
+            t2 = t + h * a2
+            f2 = odeFcn(t2, y2)
+            
+            y3 = y + h * (b21 * f1 + b22 * f2)
+            t3 = t + h * a3
+            f3 = odeFcn(t3, y3)
+            
+            y4 = y + h * (b31 * f1 + b32 * f2 + b33 * f3)
+            t4 = t + h * a4
+            f4 = odeFcn(t4, y4)
+            
+            y5 = y + h * (b41 * f1 + b42 * f2 + b43 * f3 + b44 * f4)
+            t5 = t + h * a5
+            f5 = odeFcn(t5, y5)
+            
+            y6 = y + h * (b51 * f1 + b52 * f2 + b53 * f3 + b54 * f4 + b55 * f5)
+            t6 = t + h
+            f6 = odeFcn(t6, y6)
+            
+            tnew = t + h
+            if done:
+                tnew = tfinal
+            h = tnew - t
+            
+            ynew = y + h * (b61 * f1 + b63 * f3 + b64 * f4 + b65 * f5 + b66 * f6)
+            f7 = odeFcn(tnew, ynew)
+            
+            nfevals += 6
+            
+            # Error estimation
+            fE = f1 * e1 + f3 * e3 + f4 * e4 + f5 * e5 + f6 * e6 + f7 * e7
+            
+            if normcontrol:
+                normynew = torch.norm(ynew)
+                scalingFactor = torch.max(torch.max(normy, normynew), threshold)
+                err = absh * torch.norm(fE) / scalingFactor
+            else:
+                scalingFactor = torch.max(torch.max(torch.abs(y), torch.abs(ynew)), threshold)
+                err = fE / scalingFactor
+                err = absh * torch.norm(err, p=float('inf'))
+            
+            err = err.item()  # Convert to scalar for comparison
+            
+            # Step acceptance
+            if err > rtol:
+                if torch.abs(absh - hmin) <  0.2 * hmin:
+                    consecutive_failures += 1
+                    if consecutive_failures >= max_consecutive_failures:
+                        if waitbar:
+                            pbar.close()
+                        warnings.warn(
+                            f"Step size reached minimum hmin = {hmin.item():.2e} at t={t.item():.2e}, but still cannot satisfy tolerance. "
+                            f"Current error: {err:.2e}, Required tolerance: {rtol:.2e}. "
+                            f"This may indicate a stiff ODE or overly strict tolerances. "
+                            f"Consider using a stiff solver or relaxing tolerances.",
+                            RuntimeWarning,
+                            stacklevel=2
+                        )
+                        done = True
+                        integration_failed = True
+                        break
+                else:
+                    consecutive_failures = 0  # Reset if we're still above hmin
+                # Adaptive mode: shrink step and retry
+                if nofailed:
+                    nofailed = False
+                    absh = torch.max(hmin, absh * max(0.1, 0.8 * (rtol / err) ** (1/5)))
+                else:
+                    absh = torch.max(hmin, 0.5 * absh)
+                h = tdir * absh
+                done = False
+            else:
+                # Accept step
+                errHistory.append(err)
+                consecutive_failures = 0
+                break
+        
+        nsteps += 1
+        if integration_failed:
+            break
+
+        # Update waitbar if enabled
+        if waitbar:
+            current_time = time.time()
+            if current_time - last_update_time >= update_interval or done:
+                progress = tnew.item() - t0.item()
+                pbar.n = min(progress, total_progress)
+                pbar.refresh()
+                last_update_time = current_time
+        
+        # Output processing
+        if outputAt == 2:  # computed points, no refinement
+            nout_new = 1
+            tout_new = tnew.unsqueeze(0)
+            yout_new = ynew.unsqueeze(1)
+        elif outputAt == 3:  # computed points, with refinement
+            tref = t + (tnew - t) * S
+            nout_new = refine
+            tout_new = torch.cat([tref, tnew.unsqueeze(0)])
+            yntrp45 = ntrp45split(tref, t, y, h, f1, f3, f4, f5, f6, f7)
+            yout_new = torch.cat([yntrp45, ynew.unsqueeze(1)], dim=1)
+        else:  # output only at tspan points
+            nout_new = 0
+            tout_new = torch.tensor([], dtype=dtype, device=device)
+            yout_new = torch.tensor([], dtype=dtype, device=device)
+            
+            while next_idx < ntspan:
+                if tdir * (tnew - tspan[next_idx]) < 0:
+                    break
+                nout_new += 1
+                tout_new = torch.cat([tout_new, tspan[next_idx].unsqueeze(0)])
+                if tspan[next_idx] == tnew:
+                    yout_new = torch.cat([yout_new, ynew.unsqueeze(1)], dim=1)
+                else:
+                    yntrp45 = ntrp45split(tspan[next_idx].unsqueeze(0), t, y, h, f1, f3, f4, f5, f6, f7)
+                    yout_new = torch.cat([yout_new, yntrp45], dim=1)
+                next_idx += 1
+        
+        # Store output
+        if nout_new > 0:
+            oldnout = nout
+            nout = nout + nout_new
+            
+            # Expand arrays if needed
+            if nout+1 > tout.shape[0]:
+                extra = max(chunk, nout_new)
+                tout_new_temp = torch.zeros(tout.shape[0] + extra, dtype=dtype, device=device)
+                tout_new_temp[:tout.shape[0]] = tout
+                tout = tout_new_temp
+                
+                yout_new_temp = torch.zeros(neq, yout.shape[1] + extra, dtype=dtype, device=device)
+                yout_new_temp[:, :yout.shape[1]] = yout
+                yout = yout_new_temp
+            
+            tout[oldnout+1:nout+1] = tout_new
+            yout[:, oldnout+1:nout+1] = yout_new
+        
+        # Step size adjustment for adaptive mode
+        if  nofailed:
+            temp = 1.25 * (err / rtol) ** (1/5)
+            if temp > 0.2:
+                absh = absh / temp
+            else:
+                absh = 5.0 * absh
+        
+        # Advance integration
+        t = tnew
+        y = ynew
+        if normcontrol:
+            normy = normynew
+        f1 = f7  # Reuse last function evaluation
+
+    # Close waitbar
+    if waitbar:
+        pbar.n = total_progress
+        pbar.refresh()
+        pbar.close()
+
+    # Prepare outputs
+    tout = tout[:nout+1]
+    yout = yout[:, :nout+1]
+    
+    stats = {'n_fevals': nfevals,
+             'n_steps': nsteps,
+             'n_output': nout+1,
+             'intergration': not integration_failed}
+    errInfo = {
+        'err_history': errHistory,
+        'max_step_error': max(errHistory) if errHistory else 0.0
+    }
+    
+    return tout, yout, stats, errInfo
+
+
+def ntrp45split(tinterp: torch.Tensor, t: torch.Tensor, y: torch.Tensor, 
+                h: torch.Tensor, f1: torch.Tensor, f3: torch.Tensor, 
+                f4: torch.Tensor, f5: torch.Tensor, f6: torch.Tensor, 
+                f7: torch.Tensor) -> torch.Tensor:
+    """
+    Interpolation function for Dormand-Prince method.
+    """
+    # Interpolation coefficients
+    bi12 = -183/64;   bi13 = 37/12;     bi14 = -145/128
+    bi32 = 1500/371;  bi33 = -1000/159; bi34 = 1000/371
+    bi42 = -125/32;   bi43 = 125/12;    bi44 = -375/64
+    bi52 = 9477/3392; bi53 = -729/106;  bi54 = 25515/6784
+    bi62 = -11/7;     bi63 = 11/3;      bi64 = -55/28
+    bi72 = 3/2;       bi73 = -4;        bi74 = 5/2
+    
+    dtype = y.dtype
+    device = y.device
+    
+    s = (tinterp - t) / h
+    s = s.reshape(-1)
+    
+    yinterp = torch.zeros(y.shape[0], s.shape[0], dtype=dtype, device=device)
+    
+    for jj in range(s.shape[0]):
+        sj = s[jj]
+        sj2 = sj * sj
+        
+        bs1 = sj + sj2 * (bi12 + sj * (bi13 + bi14 * sj))
+        bs3 = sj2 * (bi32 + sj * (bi33 + bi34 * sj))
+        bs4 = sj2 * (bi42 + sj * (bi43 + bi44 * sj))
+        bs5 = sj2 * (bi52 + sj * (bi53 + bi54 * sj))
+        bs6 = sj2 * (bi62 + sj * (bi63 + bi64 * sj))
+        bs7 = sj2 * (bi72 + sj * (bi73 + bi74 * sj))
+        
+        yinterp[:, jj] = y + h * (f1 * bs1 + f3 * bs3 + f4 * bs4 + 
+                                 f5 * bs5 + f6 * bs6 + f7 * bs7)
+    
+    return yinterp

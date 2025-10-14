@@ -20,7 +20,7 @@ class llg:
         value=self.gamma/(1+self.alpha**2)*torch.cat([-self.alpha*torch.ones(self.num,1),-cscv,cscv,-self.alpha*cscv2],1)
         return torch.sparse_bsc_tensor(self.block_crow,self.block_col,value.reshape(-1,2,2))
 
-    def llg(self, sp):
+    def llg_drift(self, sp):
         kernal=self.llg_kernal(sp)
         h=heff.all(sp)
         return kernal@h
