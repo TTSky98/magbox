@@ -26,7 +26,7 @@ def test_sin_ode():
     
     # 设置初始条件和时间范围
     # tspan = torch.tensor([0,10])
-    tspan=torch.range(0,10,0.1)
+    tspan=torch.linspace(0,10,101)
     x0 = torch.tensor([0.09999])  # 初始条件 x(0) 
     
     # 设置求解器选项
