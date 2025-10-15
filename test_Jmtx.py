@@ -4,11 +4,11 @@ import matplotlib.pyplot as plt
 import warnings
 # warnings.filterwarnings("ignore", category=UserWarning, message=".*iCCP.*")
 
-lt={"type":"square","size":[6,4]}
-tmp=get_Jmtx(lt,device=torch.device("cpu"))
+lt={"type":"square","size":[8,6,4],"periodic":True,"direction":3}
+tmp=get_Jmtx(lt)
 print(tmp)
 plt.figure(figsize=(6,6))
-# plt.spy(tmp.to_dense())
+plt.spy(tmp.to_dense().cpu())
 plt.show()
 
 # def test_get_Jmtx():
