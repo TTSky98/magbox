@@ -1,14 +1,65 @@
 from magbox import llg,spin
-import torch
+from torch import sin, cos
 from matplotlib import pyplot as plt
+import numpy as np
+import cProfile, pstats, io
 
-lt={"type":"square","size":[5,5],"periodic":True}
-sp=spin(0.1*torch.ones([5,5]),torch.zeros([5,5]),lattice_type=lt,device="gpu")
-sf=llg(sp)
+pr=cProfile.Profile()
+rng=np.random.default_rng()
 
-kernal=sf.llg_drift(sp)
+N1=128
+N2=128
+lt={"type":"square","size":[N1,N2],"periodic":True}
+theta0=np.acos(rng.random([N1,N2])*2-1)
+phi0=rng.random([N1,N2])*2*np.pi
+# theta0=np.ones([N1])*0.1
+# phi0=np.zeros([N1])
+alpha=0.1
+
+pr.enable()
+sp=spin(theta0,phi0,lattice_type=lt,device="gpu")
+ang=sp.ang
+sf=llg(sp,dt=1,alpha=alpha,T=50)
+
+t,ang,stats,erro_info=sf.run_zero_Temp(sp)
+theta=ang[0::2]
+phi=ang[1::2]
+x=sin(theta)*cos(phi)
+y=sin(theta)*sin(phi)
+z=cos(theta)
+
+t_np=t.cpu().detach().numpy()
+x_np=x.cpu().detach().numpy()
+y_np=y.cpu().detach().numpy()
+z_np=z.cpu().detach().numpy()
+z0=z_np[0,0]
+zt=1+np.exp(-2*alpha*t_np)*(z0-1)
+pr.disable()
+
+s = io.StringIO()
+sortby = "cumtime"  
+ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
+ps.print_stats()
+print(s.getvalue())
+pr.dump_stats("llg_gpu.prof")
+
 plt.figure(figsize=(6,6))
-plt.spy(kernal.to_dense().cpu())
+
+plt.subplot(2,1,1)
+plt.plot(t_np,x_np[0,:],label="m_x")
+plt.plot(t_np,y_np[0,:],label="m_y")
+plt.xlabel("Time")
+plt.title("m_x and m_y")
+plt.legend()
+
+plt.subplot(2,1,2)
+plt.plot(t_np,z_np[0,:],label="m_z")
+# plt.plot(t_np,zt,label="m_z")
+plt.xlabel("Time")
+plt.title("m_z")
+plt.legend()
+
+plt.tight_layout()
 plt.show()
 
 

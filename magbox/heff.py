@@ -30,6 +30,7 @@ class heff:
             self.Jmtx=J_val*boxlib.get_Jmtx(spin.lattice_type, device=spin.device,data_type=spin.data_type)
         elif isinstance(J,list) and len(J)==N_dim:
             self.Jmtx=J.to(device=spin.device,dtype=spin.data_type)
+    
     def zeeman3(self):
         return self.B*torch.ones((self.num,3),dtype=self.data_type,device=self.device)
     # def zeeman2(self,ctheta,stheta,cphi,sphi):
@@ -40,15 +41,23 @@ class heff:
         # calculate dipole field
         return torch.zeros((self.num,3))
 
-    def exchange3(self,sp):
+    def exchange3(self,cartS):
         # calculate exchange field
-        return self.Jmtx@sp.cart_S
-    def uni_anisotropy3(self,sp):
+        return self.Jmtx @ cartS
+    def uni_anisotropy3(self,cartS):
         # calculate anisotropy field
-        return self.K1*sp.cart_S
+        return self.K1 * cartS
     def DM3(self):
         # calculate DM field
         return torch.zeros((self.num,3))
-    def all3(self, sp ):
-        h0=self.zeeman3() + self.exchange3(sp) + self.uni_anisotropy3(sp)
+    def all3(self, s_theta,c_theta,s_phi,c_phi):
+        cartS=self.get_cart_S(s_theta,c_theta,s_phi,c_phi)
+        h0=self.zeeman3() + self.exchange3(cartS) + self.uni_anisotropy3(cartS)
         return h0.reshape(-1,1)
+    
+    @staticmethod
+    def get_cart_S(s_theta,c_theta,s_phi,c_phi):
+        x = s_theta * c_phi
+        y = s_theta * s_phi
+        z = c_theta
+        return torch.cat([x, y, z], dim=1)

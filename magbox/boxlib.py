@@ -222,7 +222,7 @@ def ode_rk45(odeFcn: Callable, tspan: torch.Tensor, y0: torch.Tensor,
     
     # Ensure y0 is 1D tensor
     original_shape = y0.shape
-    y0 = y0.reshape(-1)
+    y0 = y0.reshape(-1,1)
     neq = y0.shape[0]
     
     # Data type
@@ -268,7 +268,7 @@ def ode_rk45(odeFcn: Callable, tspan: torch.Tensor, y0: torch.Tensor,
     
     nout = 0
     tout[nout] = t
-    yout[:, nout] = y
+    yout[:, nout] = y.view(-1)
     
     errHistory = []
     nfevals = 0
@@ -447,7 +447,7 @@ def ode_rk45(odeFcn: Callable, tspan: torch.Tensor, y0: torch.Tensor,
                 nout_new += 1
                 tout_new = torch.cat([tout_new, tspan[next_idx].unsqueeze(0)])
                 if tspan[next_idx] == tnew:
-                    yout_new = torch.cat([yout_new, ynew.unsqueeze(1)], dim=1)
+                    yout_new = torch.cat([yout_new, ynew], dim=1)
                 else:
                     yntrp45 = ntrp45split(tspan[next_idx].unsqueeze(0), t, y, h, f1, f3, f4, f5, f6, f7)
                     yout_new = torch.cat([yout_new, yntrp45], dim=1)
@@ -543,7 +543,7 @@ def ntrp45split(tinterp: torch.Tensor, t: torch.Tensor, y: torch.Tensor,
         bs6 = sj2 * (bi62 + sj * (bi63 + bi64 * sj))
         bs7 = sj2 * (bi72 + sj * (bi73 + bi74 * sj))
         
-        yinterp[:, jj] = y + h * (f1 * bs1 + f3 * bs3 + f4 * bs4 + 
+        yinterp[:, jj:jj+1] = y + h * (f1 * bs1 + f3 * bs3 + f4 * bs4 + 
                                  f5 * bs5 + f6 * bs6 + f7 * bs7)
     
     return yinterp

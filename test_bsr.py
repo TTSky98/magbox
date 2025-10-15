@@ -11,8 +11,8 @@ values2 = torch.tensor([[[0, 1,], [6, 7]],
                        [[12, 13], [18, 19]],
                        [[15, 16], [21, 22]]])
 bsr1 = torch.sparse_bsr_tensor(crow_indices, col_indices, values1, dtype=torch.float64,device=torch.device("cuda"))
-bsr2= torch.sparse_bsr_tensor(crow_indices, col_indices, values2, dtype=torch.float64,device=torch.device("cuda"))
+bsr2= torch.sparse_bsr_tensor(crow_indices, col_indices, values2, dtype=torch.float64,device=torch.device("cpu"))
 v1=torch.tensor([[1],[2],[3],[4],[5],[6],[4],[5],[6]],dtype=torch.float64,device=torch.device("cuda"))
-v2=torch.tensor([[1],[2],[3],[4],[5],[6]],dtype=torch.float64,device=torch.device("cuda"))
+v2=torch.tensor([[1],[2],[3],[4],[5],[6]],dtype=torch.float64,device=torch.device("cpu"))
 # print(bsr1 @ v1)
 print(bsr2 @ v2)
