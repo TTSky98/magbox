@@ -3,7 +3,7 @@ import torch
 from magbox import boxlib
 
 class llg:
-    def __init__(self,sp,gamma=1, alpha=0.01, Temp=0, dt=0.1, T=50):
+    def __init__(self,sp,vars:dict={},gamma=1, alpha=0.01, Temp=0, dt=0.1, T=50):
         data_type=sp.data_type
         device=sp.device
         self.num=sp.num
@@ -13,7 +13,7 @@ class llg:
         self.dt=torch.tensor(dt,dtype=data_type,device=device)
         self.T=torch.tensor(T,dtype=data_type,device=device)
         self.tspan=torch.linspace(0,self.T,int(self.T/self.dt)+1,dtype=data_type,device=device)
-        self.h_fun=heff(sp)
+        self.h_fun=heff(sp,vars)
         self.data_type=sp.data_type
         self.device=sp.device
 

@@ -2,8 +2,17 @@ import torch
 from magbox import boxlib
 
 class heff:
-    def __init__(self, spin, B=0,B_dir=[0,0,1],J=1,K_dir=[0,0,1],K1=1,D=0):
+    def __init__(self, spin, vars): # B=0,B_dir=[0,0,1],J=1,K_dir=[0,0,1],K1=1,D=0
         # self.spin = spin
+
+        B=vars.get("B",0) # external field
+        B_dir=vars.get("B_dir",[0,0,1]) # external field direction
+
+        J=vars.get("J",1) # exchange interaction
+        K_dir=vars.get("K_dir",[0,0,1]) # uniaxial anisotropy axis
+        K1=vars.get("K1",1) # uniaxial anisotropy strength
+        D=vars.get("D",0) # Dzyaloshinskii-Moriya interaction
+
         self.num=spin.num
         self.B=torch.tensor(B,dtype=spin.data_type,device=spin.device)# external field
         self.B_dir=torch.tensor(B_dir,dtype=spin.data_type,device=spin.device)
@@ -27,9 +36,14 @@ class heff:
 
         if isinstance(J,(int,float)) or (isinstance(J,list) and len(J)==1):
             J_val=J
-            self.Jmtx=J_val*boxlib.get_Jmtx(spin.lattice_type, device=spin.device,data_type=spin.data_type)
-        elif isinstance(J,list) and len(J)==N_dim:
-            self.Jmtx=J.to(device=spin.device,dtype=spin.data_type)
+            self.Jmtx=J_val*boxlib.get_Jmtx({**l_type,"J_direction":None}, device=spin.device,data_type=spin.data_type)
+        elif isinstance(J,list):
+            if len(J)!=N_dim:
+                raise ValueError(f"J should be a scalar or a list of length {N_dim}")
+            # self.Jmtx=J.to(device=spin.device,dtype=spin.data_type)
+            self.Jmtx=torch.zeros((self.num,self.num),dtype=spin.data_type,device=spin.device)
+            for i in range(N_dim):
+                self.Jmtx+=J[i]*boxlib.get_Jmtx({**l_type,"J_direction":i}, device=spin.device,data_type=spin.data_type)
     
     def zeeman3(self):
         return self.B*torch.ones((self.num,3),dtype=self.data_type,device=self.device)

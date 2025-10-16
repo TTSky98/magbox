@@ -18,8 +18,8 @@ alpha=0.1
 
 pr.enable()
 sp=spin(theta0,phi0,lattice_type=lt,device="gpu")
-ang=sp.ang
 sf=llg(sp,dt=1,alpha=alpha,T=50)
+ang=sp.ang
 
 t,ang,stats,erro_info=sf.run_zero_Temp(sp)
 theta=ang[0::2]

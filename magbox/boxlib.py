@@ -46,7 +46,7 @@ def get_Jmtx(lattice_type,device=torch.device("cuda"),data_type=torch.float32) -
                 pd[2]=False
             elif N_dim==2:
                 pd[2]=False
-        direction=lattice_type.get("direction",None)
+        direction=lattice_type.get("J_direction",None)
         totalN=math.prod(N)
         N1=N[0]
         N2=N[1]
@@ -97,7 +97,7 @@ def get_Jmtx(lattice_type,device=torch.device("cuda"),data_type=torch.float32) -
 
         else:
             # 只有一个方向的耦合
-            if direction==1: # backward耦合（x方向）
+            if direction==0: # backward耦合（x方向）
                 i = torch.arange(1, totalN)
                 back_boundary = (i % N1 == 0)
                 i = i[~back_boundary]
@@ -110,7 +110,7 @@ def get_Jmtx(lattice_type,device=torch.device("cuda"),data_type=torch.float32) -
                     j=torch.cat([j, back_forward_j])
 
                 v = torch.ones(len(i), dtype=data_type,device=device) / 2
-            elif direction==2: # right耦合（y方向）
+            elif direction==1: # right耦合（y方向）
                 i = torch.arange(1, totalN)
                 right_boundary = ((i - 1) % (N1 * N2) - N1 * (N2 - 1)) >= 0
                 i = i[~right_boundary]
@@ -125,7 +125,7 @@ def get_Jmtx(lattice_type,device=torch.device("cuda"),data_type=torch.float32) -
                     i=torch.cat([i, left_right_i])
                     j=torch.cat([j, left_right_j])
                 v = torch.ones(len(i), dtype=data_type,device=device) / 2
-            elif direction == 3:  # bottom耦合（z方向）
+            elif direction == 2:  # bottom耦合（z方向）
                 i = torch.arange(1, totalN - N1 * N2 + 1)
                 j = torch.arange(N1 * N2, totalN)
                 if pd:  # 周期性边界条件
