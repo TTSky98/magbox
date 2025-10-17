@@ -547,3 +547,123 @@ def ntrp45split(tinterp: torch.Tensor, t: torch.Tensor, y: torch.Tensor,
                                  f5 * bs5 + f6 * bs6 + f7 * bs7)
     
     return yinterp
+
+def sde_euler(f: Callable, # drift function
+                g: Callable, # diffusion function
+                tspan: torch.Tensor, 
+                y0: torch.Tensor, 
+                options: Optional[Dict[str, Any]] = None
+        ) -> Tuple[torch.Tensor, torch.Tensor, Dict, Dict]:
+    """
+    Modified Euler-Maruyama method for SDEs.
+    
+    Parameters:
+    -----------
+    f : callable
+        Drift function: f(t, y)
+    g : callable
+        Diffusion function: g(t, y)
+    tspan : torch.Tensor
+        Time span for integration
+    y0 : torch.Tensor
+        Initial condition
+    options : dict, optional
+        Integration options
+
+    Returns:
+    --------
+    tout : torch.Tensor
+        Time points at which output is given
+    yout : torch.Tensor 
+        Solution at tout
+    stats : dict
+        Integration statistics
+    errInfo : dict
+        Error information
+    """
+    if options is None:
+        options = {}
+
+    # Initialize options
+    waitbar = options.get('waitbar', True)
+    
+    # Extract odeset options
+    rtol = options.get('rel_tol', 1e-3)
+    atol = options.get('abs_tol', 1e-6)
+    normcontrol = options.get('NormControl', 'off') == 'on'
+    max_consecutive_failures = options.get('max_consecutive_failures', 10)
+    # Initialize waitbar
+    if waitbar:
+        # Estimate total progress based on time span
+        t0 = tspan[0].item()
+        tfinal = tspan[-1].item()
+        total_progress = tfinal - t0
+        pbar = tqdm(total=total_progress, desc='ODE Integration', 
+                unit='time', ncols=100, bar_format='{l_bar}{bar}| {n:.2f}/{total_fmt} [{elapsed}<{remaining}]')
+        last_update_time = time.time()
+        update_interval = 0.1  # Update progress bar every 0.1 seconds
+    
+    # Initialize solution storage
+    t0 = tspan[0]
+    tfinal = tspan[-1]
+    tdir = torch.sign(tfinal - t0)
+    
+    # Ensure y0 is 1D tensor
+    original_shape = y0.shape
+    y0 = y0.reshape(-1,1)
+    neq = y0.shape[0]
+    
+    # Data type
+    dtype = y0.dtype
+    device = y0.device
+    
+    # Step size constraints
+    hmin = 16 * torch.finfo(dtype).eps
+    hmin=torch.tensor(hmin,dtype=dtype,device=device)
+    safehmax = 16.0 * torch.finfo(dtype).eps * torch.max(torch.abs(t0), torch.abs(tfinal))
+    defaulthmax = torch.max(0.1 * torch.abs(tfinal - t0), safehmax)
+    hmax = torch.min(torch.abs(tfinal - t0), 
+                    torch.tensor(options.get('MaxStep', defaulthmax.item()), dtype=dtype, device=device))
+    threshold = torch.tensor(atol, dtype=dtype, device=device)
+    if normcontrol:
+        normy = torch.norm(y0)
+    else:
+        normy = torch.tensor(0.0, dtype=dtype, device=device)
+    
+    t = t0.clone()
+    y = y0.clone()
+    
+    # Output configuration
+    ntspan = tspan.shape[0]
+    refine = options.get('Refine', 4)
+    
+    if ntspan > 2:
+        outputAt = 1  # output only at tspan points
+    elif refine <= 1:
+        outputAt = 2  # computed points, no refinement
+    else:
+        outputAt = 3  # computed points, with refinement
+        S = torch.linspace(1/refine, 1 - 1/refine, refine - 1, dtype=dtype, device=device)
+    
+    # Initialize output arrays
+    if ntspan > 2:
+        tout = torch.zeros(ntspan, dtype=dtype, device=device)
+        yout = torch.zeros(neq, ntspan, dtype=dtype, device=device)
+    else:
+        chunk = min(max(100, 50 * refine), refine + (2**13) // neq)
+        tout = torch.zeros(chunk, dtype=dtype, device=device)
+        yout = torch.zeros(neq, chunk, dtype=dtype, device=device)
+    
+    nout = 0
+    tout[nout] = t
+    yout[:, nout] = y.view(-1)
+    
+    errHistory = []
+    nfevals = 0
+    nsteps = 0
+    while done
+    done = False
+
+
+    return tout,yout,stats,error_info
+
