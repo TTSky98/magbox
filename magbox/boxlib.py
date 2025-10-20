@@ -307,6 +307,9 @@ def ode_rk45(odeFcn: Callable, tspan: torch.Tensor, y0: torch.Tensor,
     e5 = torch.tensor(-17253/339200, dtype=dtype, device=device)
     e6 = torch.tensor(22/525, dtype=dtype, device=device)
     e7 = torch.tensor(-1/40, dtype=dtype, device=device)
+
+    # Pi value
+    t2pi=torch.tensor(2*math.pi,dtype=dtype,device=device)
     
     # Initial function evaluation
     f1 = odeFcn(t, y)
@@ -435,7 +438,7 @@ def ode_rk45(odeFcn: Callable, tspan: torch.Tensor, y0: torch.Tensor,
             nout_new = refine
             tout_new = torch.cat([tref, tnew.unsqueeze(0)])
             yntrp45 = ntrp45split(tref, t, y, h, f1, f3, f4, f5, f6, f7)
-            yout_new = torch.cat([yntrp45, ynew.unsqueeze(1)], dim=1)
+            yout_new = torch.cat([yntrp45, ynew.unsqueeze(1)], dim=1) 
         else:  # output only at tspan points
             nout_new = 0
             tout_new = torch.tensor([], dtype=dtype, device=device)
@@ -452,7 +455,7 @@ def ode_rk45(odeFcn: Callable, tspan: torch.Tensor, y0: torch.Tensor,
                     yntrp45 = ntrp45split(tspan[next_idx].unsqueeze(0), t, y, h, f1, f3, f4, f5, f6, f7)
                     yout_new = torch.cat([yout_new, yntrp45], dim=1)
                 next_idx += 1
-        
+        yout_new = yout_new % t2pi
         # Store output
         if nout_new > 0:
             oldnout = nout
@@ -482,7 +485,7 @@ def ode_rk45(odeFcn: Callable, tspan: torch.Tensor, y0: torch.Tensor,
         
         # Advance integration
         t = tnew
-        y = ynew
+        y = ynew % t2pi
         if normcontrol:
             normy = normynew
         f1 = f7  # Reuse last function evaluation
