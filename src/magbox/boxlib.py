@@ -551,8 +551,7 @@ def ntrp45split(tinterp: torch.Tensor, t: torch.Tensor, y: torch.Tensor,
     
     return yinterp
 
-def ode_sde_em(f: Callable, # drift function
-                g: Callable, # diffusion function
+def ode_sde_em(f: Callable, # function
                 tspan: torch.Tensor, 
                 y0: torch.Tensor, 
                 options: Optional[Dict[str, Any]] = None
@@ -563,9 +562,7 @@ def ode_sde_em(f: Callable, # drift function
     Parameters:
     -----------
     f : callable
-        Drift function: f(t, y)
-    g : callable
-        Diffusion function: g(t, y)
+        function: f0,g0 = f(t, y) with f0 the drift term and g0 the diffusion term
     tspan : torch.Tensor
         Time span for integration
     y0 : torch.Tensor
@@ -671,8 +668,7 @@ def ode_sde_em(f: Callable, # drift function
     h = torch.min(hmax, torch.max(hmin, 0.1 * torch.abs(tfinal - t0)))
     absh = torch.abs(h)
     # Initial function evaluation
-    f1 = f(t, y)
-    g1 = g(t, y)
+    f1, g1 = f(t, y)
     noise_dim=g1.shape[1]
     nfevals += 1
     
@@ -701,8 +697,7 @@ def ode_sde_em(f: Callable, # drift function
         while True:
             y2 = y+ f1 * h/2 + g1 @ W1 * torch.sqrt(absh/2)
             t2 = t + h / 2
-            f2 = f(t2, y2)
-            g2 = g(t2, y2)
+            f2, g2 = f(t2, y2)
             
             ynew = y + f2 *h/2 + g2 @ W2 * torch.sqrt(absh/2)
             tnew = t + h
@@ -828,8 +823,7 @@ def ode_sde_em(f: Callable, # drift function
         y = ynew % t2pi
         if normcontrol:
             normy = norm_y_new
-        f1 = f(t,y)
-        g1 = g(t,y)
+        f1, g1 = f(t,y)
         nfevals += 1
     # Close waitbar
     if waitbar:

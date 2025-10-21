@@ -3,8 +3,12 @@ from torch import sin, cos
 from matplotlib import pyplot as plt
 import numpy as np
 import cProfile, pstats, io
+from pyinstrument import Profiler
 
-pr=cProfile.Profile()
+# pr=cProfile.Profile()
+# trace(files=files.all)
+pr=Profiler()
+pr.start()
 rng=np.random.default_rng()
 
 N1=2**8
@@ -15,27 +19,30 @@ theta0=np.acos(rng.random([N1])*2-1)
 phi0=rng.random([N1])*2*np.pi
 # theta0=np.ones([N1])*0.1
 # phi0=np.zeros([N1])
-alpha=0.2
+alpha=0.1
 
-pr.enable()
+# pr.enable()
 sp=spin(theta0,phi0,lattice_type=lt,device="cpu",type='f64')
-sf=llg(sp,vars=vars, dt=0.5,alpha=alpha,T=200,Temp=0.5)
+sf=llg(sp,vars=vars, dt=0.5,alpha=alpha,T=20,Temp=0.1)
 ang=sp.ang
 
 t,ang,stats,erro_info=sf.run(sp)
-pr.disable()
+# pr.disable()
 en=sf.h_fun.energy(ang)
 
 t_np=t.cpu().detach().numpy()
 en_np=en.cpu().detach().numpy()
 en_np=en_np/N1
 
-s = io.StringIO()
-sortby = "cumtime"  
-ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
-ps.print_stats()
-# print(s.getvalue())
-pr.dump_stats("llg_thermal_cpu.prof")
+# s = io.StringIO()
+# sortby = "cumtime"  
+# ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
+# ps.print_stats()
+# # print(s.getvalue())
+# pr.dump_stats("llg_thermal_cpu.prof")
+
+pr.stop()
+pr.open_in_browser()
 
 plt.figure(figsize=(6,6))
 

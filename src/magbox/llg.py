@@ -90,14 +90,9 @@ class llg:
         # h3_to_h2=self.llg_convert(s_theta,c_theta,s_phi,c_phi)
         kernal=self.llg_drift_cart_to_sph(s_theta,c_theta,s_phi,c_phi)
         h3=self.h_fun.all3(s_theta,c_theta,s_phi,c_phi)
-        correction=self.Stratonovich_correction(s_theta,c_theta)
         drift_core=kernal @ h3
-        return drift_core-correction
-    def Stratonovich_correction(self,s_theta,c_theta):
-        cot_theta=c_theta/s_theta
-        value=self.gamma * self.alpha * self.Temp/(1+self.alpha**2)*torch.cat([cot_theta, torch.zeros(self.num,1,dtype=self.data_type,device=self.device)],1)
-        return value.reshape(-1,1)
-    def llg_noise(self,ang):
+        return drift_core
+    def llg_thermal(self, t, ang):
         theta=ang[0::2]
         phi=ang[1::2]
 
@@ -105,16 +100,28 @@ class llg:
         c_theta=torch.cos(theta)
         s_phi=torch.sin(phi)
         c_phi=torch.cos(phi)
-        
-        return self.llg_drift_cart_to_sph(s_theta,c_theta,s_phi,c_phi) * self.thermal_strength
+
+        # kernal=self.llg_kernal(s_theta)
+        # h3_to_h2=self.llg_convert(s_theta,c_theta,s_phi,c_phi)
+        kernal=self.llg_drift_cart_to_sph(s_theta,c_theta,s_phi,c_phi)
+        h3=self.h_fun.all3(s_theta,c_theta,s_phi,c_phi)
+        correction=self.Stratonovich_correction(s_theta,c_theta)
+        drift_core=kernal @ h3
+        return drift_core-correction, kernal*self.thermal_strength
+
+    def Stratonovich_correction(self,s_theta,c_theta):
+        cot_theta=c_theta/s_theta
+        value=self.gamma * self.alpha * self.Temp/(1+self.alpha**2)*torch.cat([cot_theta, torch.zeros(self.num,1,dtype=self.data_type,device=self.device)],1)
+        return value.reshape(-1,1)
     def run(self,sp):
-        llg_fun=lambda t, y: self.llg_drift(t,y)
+        
         
         ini=sp.ang
         odeset={"rel_tol":max(self.alpha*1e-2,1e-6),"abs_tol":max(self.alpha*1e-4,1e-6)}
         if self.Temp==0:
+            llg_fun=lambda t, y: self.llg_drift(t,y)
             t,ang,stats,erro_info=boxlib.ode_rk45(llg_fun, self.tspan, ini, options=odeset)
         else:
-            noise_fun=lambda t,y: self.llg_noise(y)
-            t,ang,stats,erro_info=boxlib.ode_sde_em(llg_fun,noise_fun, self.tspan,ini, options=odeset)
+            llg_fun=lambda t,y: self.llg_thermal(t,y)
+            t,ang,stats,erro_info=boxlib.ode_sde_em(llg_fun, self.tspan,ini, options=odeset)
         return t,ang,stats,erro_info
