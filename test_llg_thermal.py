@@ -1,0 +1,51 @@
+from magbox import llg,spin
+from torch import sin, cos
+from matplotlib import pyplot as plt
+import numpy as np
+import cProfile, pstats, io
+
+pr=cProfile.Profile()
+rng=np.random.default_rng()
+
+N1=2**8
+lt={"type":"square","size":[N1],"periodic":True}
+vars={'J':0}
+theta0=np.acos(rng.random([N1])*2-1)
+# theta0=np.ones([N1])*0.1
+phi0=rng.random([N1])*2*np.pi
+# theta0=np.ones([N1])*0.1
+# phi0=np.zeros([N1])
+alpha=0.2
+
+pr.enable()
+sp=spin(theta0,phi0,lattice_type=lt,device="cpu",type='f64')
+sf=llg(sp,vars=vars, dt=0.5,alpha=alpha,T=200,Temp=0.5)
+ang=sp.ang
+
+t,ang,stats,erro_info=sf.run(sp)
+pr.disable()
+en=sf.h_fun.energy(ang)
+
+t_np=t.cpu().detach().numpy()
+en_np=en.cpu().detach().numpy()
+en_np=en_np/N1
+
+s = io.StringIO()
+sortby = "cumtime"  
+ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
+ps.print_stats()
+# print(s.getvalue())
+pr.dump_stats("llg_thermal_cpu.prof")
+
+plt.figure(figsize=(6,6))
+
+plt.subplot(2,1,1)
+plt.plot(t_np,en_np,label="energy")
+plt.xlabel("Time")
+plt.title("energy")
+plt.legend()
+
+plt.tight_layout()
+plt.show()
+
+

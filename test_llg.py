@@ -21,7 +21,7 @@ sp=spin(theta0,phi0,lattice_type=lt,device="gpu")
 sf=llg(sp,dt=1,alpha=alpha,T=50)
 ang=sp.ang
 
-t,ang,stats,erro_info=sf.run_zero_Temp(sp)
+t,ang,stats,erro_info=sf.run(sp)
 theta=ang[0::2]
 phi=ang[1::2]
 x=sin(theta)*cos(phi)

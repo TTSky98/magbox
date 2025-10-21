@@ -44,7 +44,23 @@ class heff:
             self.Jmtx=torch.zeros((self.num,self.num),dtype=spin.data_type,device=spin.device)
             for i in range(N_dim):
                 self.Jmtx+=J[i]*boxlib.get_Jmtx({**l_type,"J_direction":i}, device=spin.device,data_type=spin.data_type)
-    
+    def energy(self,ang):
+        theta=ang[0::2]
+        phi=ang[1::2]
+        s_theta=torch.sin(theta)
+        c_theta=torch.cos(theta)
+        s_phi=torch.sin(phi)
+        c_phi=torch.cos(phi)
+        t_num=theta.shape[1]
+
+        cartS=self.get_cart_S(s_theta,c_theta,s_phi,c_phi)
+
+        E_zeeman= - torch.sum(self.B[0] * cartS[:,0:t_num]+self.B[1] * cartS[:,t_num:2*t_num]+self.B[2] * cartS[:,2*t_num:], dim=0)
+        E_exch= -0.5 * torch.sum(cartS * (self.Jmtx @ cartS), dim=0)
+        E_exch=E_exch[0::3] + E_exch[1::3] + E_exch[2::3]
+        E_anis= -0.5 * torch.norm(self.K1) * torch.sum((cartS[:,0:t_num] *self.K_dir[0]+cartS[:,t_num:2*t_num] *self.K_dir[1]+cartS[:,2*t_num:] *self.K_dir[2])**2, dim=0)
+        E_total=E_zeeman + E_exch + E_anis
+        return E_total
     def zeeman3(self):
         return self.B*torch.ones((self.num,3),dtype=self.data_type,device=self.device)
     # def zeeman2(self,ctheta,stheta,cphi,sphi):
@@ -75,3 +91,5 @@ class heff:
         y = s_theta * s_phi
         z = c_theta
         return torch.cat([x, y, z], dim=1)
+    
+        
