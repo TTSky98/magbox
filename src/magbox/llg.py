@@ -1,6 +1,6 @@
-from magbox.heff import heff
+from .heff import heff
 import torch 
-from magbox import boxlib
+from . import boxlib
 
 class llg:
     def __init__(self,sp,vars:dict={},gamma=1, alpha=0.01, Temp=0., dt=0.1, T=50):

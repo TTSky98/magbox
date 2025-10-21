@@ -1,5 +1,5 @@
 import torch
-from magbox import boxlib
+from . import boxlib
 
 class heff:
     def __init__(self, spin, vars): # B=0,B_dir=[0,0,1],J=1,K_dir=[0,0,1],K1=1,D=0

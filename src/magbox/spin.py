@@ -1,6 +1,6 @@
 import numpy as np
 import torch
-from magbox import boxlib
+from . import boxlib
 class spin:
     def __init__(self, theta, phi, lattice_type,type="f32", device="gpu"):
         data_type=boxlib.get_data_type(type)
