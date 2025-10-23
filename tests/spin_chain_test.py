@@ -7,9 +7,9 @@ testdata = [ # N, K, J, dt ,T
     (256,1.0,0.5,1,500),
     (512,1.0,0.5,1,500),
     (1024,1.0,0.5,1,500),
-    (256,1.0,1.0,1,500),
-    (256,1.0,2.0,1,500),
-    (256,1.0,3.0,1,500),
+    (256,1.0,1.0,0.5,500),
+    (256,1.0,2.0,0.1,500),
+    (256,1.0,3.0,0.1,500),
 ]
 
 def plot_fun(ft_abs,q,w,K,J,dispersion,dispersion_theory,err,mean_err,max_err):
@@ -78,7 +78,7 @@ def test_spin_chain(N,K,J,dt,T):
         arg_max=np.argmax(ft_abs[idx,:])
         dispersion[idx]=w[arg_max]
     dispersion_theory=dispersion_fun(q)
-    err=dispersion_theory-dispersion
+    err=dispersion/dispersion_theory-1
     max_err=np.max(np.abs(err))
     mean_err=np.mean(np.abs(err))
 
