@@ -2,7 +2,8 @@ import numpy as np
 import torch
 from . import boxlib
 class spin:
-    def __init__(self, theta, phi, lattice_type,type="f32", device="gpu"):
+    def __init__(self, theta, phi, lattice_type,type="f32", device="gpu",thread:int=4):
+        torch.set_num_threads(thread)
         data_type=boxlib.get_data_type(type)
         self.data_type=data_type
         self.device=boxlib.get_device(device)

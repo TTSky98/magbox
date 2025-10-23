@@ -360,7 +360,7 @@ def ode_rk45(odeFcn: Callable, tspan: torch.Tensor, y0: torch.Tensor,
             tnew = t + h
             if done:
                 tnew = tfinal
-            h = tnew - t
+            # h = tnew - t
             
             ynew = y + h * (b61 * f1 + b63 * f3 + b64 * f4 + b65 * f5 + b66 * f6)
             f7 = odeFcn(tnew, ynew)
