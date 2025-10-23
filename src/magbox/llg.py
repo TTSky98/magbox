@@ -117,7 +117,7 @@ class llg:
         
         
         ini=sp.ang
-        odeset={"rel_tol":max(self.alpha*1e-2,1e-6),"abs_tol":max(self.alpha*1e-4,1e-6)}
+        odeset={"rel_tol":max(self.alpha.item()*1e-2,1e-6),"abs_tol":max(self.alpha.item()*1e-4,1e-6)}
         if self.Temp==0:
             llg_fun=lambda t, y: self.llg_drift(t,y)
             t,ang,stats,erro_info=boxlib.ode_rk45(llg_fun, self.tspan, ini, options=odeset)
