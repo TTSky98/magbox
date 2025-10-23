@@ -1,6 +1,5 @@
 import magbox
 import numpy as np
-import matplotlib.pyplot as plt
 import os
 import pytest
 
@@ -17,6 +16,7 @@ def plot_fun(ft_abs,q,w,K,J,dispersion,dispersion_theory,err,mean_err,max_err):
     if "PYTEST_CURRENT_TEST" in os.environ:
         print("测试模式不作图")
         return
+    import matplotlib.pyplot as plt
     plt.figure(figsize=(10,10))
 
     plt.subplot(2,2,1)
