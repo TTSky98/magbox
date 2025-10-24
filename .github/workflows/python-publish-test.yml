@@ -19,17 +19,10 @@ permissions:
   contents: read
 
 jobs:
- 
   release-build:
     runs-on: ubuntu-latest
-    
+    if : github.event.ref=='refs/heads/main'
     steps:
-      - name: Show branch
-        run: |
-          echo "Branch: ${{ github.event.ref }}"
-          echo "Is main Branch: ${{ github.event.ref=='refs/heads/main' }}"
-          echo "Branch name: ${{ github.event.head_ref }}"
-
       - uses: actions/checkout@v4
 
       - uses: actions/setup-python@v5
