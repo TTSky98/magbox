@@ -29,10 +29,11 @@ jobs:
         run: |
           tag=${BRANCH_NAME}
           branches=$(git branch --contains $tag --remotes | sed 's/.*\///')
-          echo "branches=$branches" >> $GITHUB_OUTPUT
+          echo "$branches"
+          echo "branch=$branches" >> $GITHUB_ENV
       - name: check branch is on main
         run: |
-          if [[ "${{ steps.get-branches.outputs.branches }}" == main ]]; then
+          if [[ "${{ env.branch}}" == main ]]; then
             echo "main"
           else
             echo "not main"
