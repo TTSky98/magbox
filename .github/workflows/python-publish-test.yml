@@ -30,7 +30,6 @@ jobs:
           echo "event.ref: ${{ github.event.ref }}"
           echo "ref: ${{ github.ref }}"
           echo "get: ${BRANCH_NAME}"
-          echo "get: ${{BRANCH_NAME}}"
 
   release-build:
     runs-on: ubuntu-latest
