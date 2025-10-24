@@ -22,7 +22,7 @@ jobs:
   show-branch:
     runs-on: ubuntu-latest
     steps:
-      - uses: nelonoel/branch-name@v1
+      - uses: nelonoel/branch-name@v1.0.1
 
       - uses: actions/checkout@v4
       - name: Show branch
