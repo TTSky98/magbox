@@ -19,6 +19,13 @@ permissions:
   contents: read
 
 jobs:
+  show-branch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Show branch
+        run: echo ${{ github.event.ref }}
+
   release-build:
     runs-on: ubuntu-latest
     if : github.event.ref=='refs/heads/main'
