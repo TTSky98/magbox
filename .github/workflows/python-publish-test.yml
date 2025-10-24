@@ -31,7 +31,7 @@ jobs:
         run: |
           echo "event.ref: ${{ github.event.ref }}"
           echo "ref: ${{ github.ref }}"
-          echo "get: $${{ steps.branch-name.outputs.branch_name}}"
+          echo "get: ${{ steps.branch-name.outputs}}"
 
   release-build:
     runs-on: ubuntu-latest
