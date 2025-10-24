@@ -4,7 +4,7 @@ import os
 import pytest
 import scipy
 
-testdata = [ # N, K, dt, alpha
+testdata = [ # N, K, J, alpha
     (256, 1.0, 0.5, 0.1),
     (256, 3.0, 8, 0.1),
     (256, 1.0, 0.5, 0.01),
@@ -51,7 +51,7 @@ def peak_correction(left_height,right_height,peak_height):
     
     return loc*epsilon
 
-@pytest.mark.parametrize("N,K,dt,alpha",testdata)
+@pytest.mark.parametrize("N,K,J,alpha",testdata)
 def test_energy_damping(N,K,J,alpha):
     # N=256
     # K=1.0
