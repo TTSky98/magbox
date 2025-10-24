@@ -26,8 +26,9 @@ jobs:
     steps:
       - name: Show branch
         run: |
-          echo "Branch: ${{ github.event.base_ref }}"
-          echo "Is main Branch: ${{ github.event.base_ref=='refs/heads/main' }}"
+          echo "Branch: ${{ github.event.ref }}"
+          echo "Is main Branch: ${{ github.event.ref=='refs/heads/main' }}"
+          echo "Branch name: ${{ github.event.head_ref }}"
 
       - uses: actions/checkout@v4
 
