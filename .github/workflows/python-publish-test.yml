@@ -27,6 +27,7 @@ jobs:
         run: |
           echo "event.ref: ${{ github.event.ref }}"
           echo "ref: ${{ github.ref }}"
+          echo "head: ${{ github.head_ref}}" 
 
   release-build:
     runs-on: ubuntu-latest
