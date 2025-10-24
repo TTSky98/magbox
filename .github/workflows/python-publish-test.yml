@@ -12,16 +12,24 @@ on:
   push:
     tags:
      - "v*"
+  workflow_dispatch:
      
 
 permissions:
   contents: read
 
 jobs:
+ 
   release-build:
     runs-on: ubuntu-latest
-    if : github.event.base_ref == 'refs/heads/main'
+    
     steps:
+      - name: Show branch
+        run: |
+          echo "Branch: ${{ github.event.base_ref }}"
+          echo "Is main Branch: ${{ github.event.base_ref=='refs/heads/main' }}"
+
+        if : github.event.base_ref == 'refs/heads/main'
       - uses: actions/checkout@v4
 
       - uses: actions/setup-python@v5
