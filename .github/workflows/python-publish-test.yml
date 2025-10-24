@@ -25,11 +25,18 @@ jobs:
       - uses: nelonoel/branch-name@v1.0.1
 
       - uses: actions/checkout@v4
-      - name: Show branch
+      - name: get-branches
         run: |
           tag=${BRANCH_NAME}
           branches=$(git branch --contains $tag --remotes | sed 's/.*\///')
           echo "branches=$branches" >> $GITHUB_OUTPUT
+      - name: check branch is on main
+        run: |
+          if [[ "${{ steps.get-branches.outputs.branches }}" == main ]]; then
+            echo "main"
+          else
+            echo "not main"
+          fi
 
   release-build:
     runs-on: ubuntu-latest
