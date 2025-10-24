@@ -1,4 +1,5 @@
-__version__="0.1.0"
+import importlib.metadata
+__version__=importlib.metadata.version(__name__)
 __author__="Yutian Wang"
 
 from .llg import llg
