@@ -29,7 +29,6 @@ jobs:
           echo "Branch: ${{ github.event.base_ref }}"
           echo "Is main Branch: ${{ github.event.base_ref=='refs/heads/main' }}"
 
-        if : github.event.base_ref == 'refs/heads/main'
       - uses: actions/checkout@v4
 
       - uses: actions/setup-python@v5
