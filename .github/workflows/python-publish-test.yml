@@ -22,16 +22,15 @@ jobs:
   show-branch:
     runs-on: ubuntu-latest
     steps:
-      - name: get branch name
-        uses: nelonoel/branch-name@v1.0.1
-        id : branch-name
+      - uses: nelonoel/branch-name@v1
 
       - uses: actions/checkout@v4
       - name: Show branch
         run: |
           echo "event.ref: ${{ github.event.ref }}"
           echo "ref: ${{ github.ref }}"
-          echo "get: ${{ steps.branch-name.outputs}}"
+          echo "get: ${BRANCH_NAME}"
+          echo "get: ${{BRANCH_NAME}}"
 
   release-build:
     runs-on: ubuntu-latest
