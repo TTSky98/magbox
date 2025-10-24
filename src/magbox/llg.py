@@ -1,9 +1,11 @@
 from .heff import heff
 import torch 
 from . import boxlib
+import warnings
 
 class llg:
     def __init__(self,sp,vars:dict={},gamma=1, alpha=0.01, Temp=0., dt=0.1, T=50):
+        warnings.filterwarnings("ignore", message="Sparse CSR tensor support is in beta state")
         data_type=sp.data_type
         device=sp.device
         self.num=sp.num
