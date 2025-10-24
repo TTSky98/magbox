@@ -12,6 +12,7 @@ on:
   push:
     tags:
      - "v*"
+     - "!v*-alpha"
   workflow_dispatch:
      
 
@@ -19,29 +20,8 @@ permissions:
   contents: read
 
 jobs:
-  show-branch:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: nelonoel/branch-name@v1.0.1
-
-      - uses: actions/checkout@v4
-      - name: get-branches
-        run: |
-          tag=${BRANCH_NAME}
-          branches=$(git branch --contains ${tag})
-          echo "${branches}"
-          echo "branch=${branches}" >> $GITHUB_ENV
-      - name: check branch is on main
-        run: |
-          if [[ "${{ env.branch}}" == main ]]; then
-            echo "main"
-          else
-            echo "not main"
-          fi
-
   release-build:
     runs-on: ubuntu-latest
-    if : github.event.ref=='refs/heads/main'
     steps:
       - uses: actions/checkout@v4
 
