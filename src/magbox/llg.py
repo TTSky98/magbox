@@ -4,11 +4,13 @@ from . import boxlib
 from .initial import Lattice, Vars
 from .spin import spin
 import warnings
+from typing import Union
 
 class llg:
-    def __init__(self,sp:spin,vars:Vars=Vars(),gamma=1, alpha=0.01, Temp=0., dt=0.1, T=50):
-
+    def __init__(self,sp:spin,vars:Vars=Vars(),gamma=1, alpha=0.01, Temp=0., dt=0.1, T=50, rtol:Union[float,None]=None, atol:Union[float,None]=None):
         warnings.filterwarnings("ignore", message="Sparse CSR tensor support is in beta state")
+        self.rtol=rtol
+        self.atol=atol
         data_type=sp.data_type
         device=sp.device
         self.num=sp.num
@@ -119,10 +121,24 @@ class llg:
         value=self.gamma * self.alpha * self.Temp/(1+self.alpha**2)*torch.cat([cot_theta, torch.zeros(self.num,1,dtype=self.data_type,device=self.device)],1)
         return value.reshape(-1,1)
     def run(self,sp):
-        
-        
+        # error control
+        if self.rtol is None:
+            if self.Temp ==0 :
+                rtol=max(self.alpha.item()*1e-2,1e-3)
+            else:
+                rtol=max(self.alpha.item()/2,5e-2)
+        else:
+            rtol=self.rtol
+
+        if self.atol is None:
+            if self.Temp ==0 :
+                atol=max(self.alpha.item()*1e-4,1e-6)
+            else:
+                atol=max(self.alpha.item()*1e-2,1e-3)
+        else:
+            atol=self.atol
+        odeset={"rel_tol":rtol,"abs_tol":atol}
         ini=sp.ang
-        odeset={"rel_tol":max(self.alpha.item()*1e-2,1e-4),"abs_tol":max(self.alpha.item()*1e-4,1e-6)}
         if self.Temp==0:
             llg_fun=self.llg_drift
             t,ang,stats,erro_info=boxlib.ode_rk45(llg_fun, self.tspan, ini, options=odeset)
