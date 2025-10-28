@@ -354,7 +354,7 @@ class eq_solver:
                 accept_step=err <= rtol
                 if accept_step:
                     n_failures = 0
-                if h <= h_min:
+                if h_abs <= h_min:
                     accept_step = True
                     n_failures +=1
                     failed=True
@@ -567,7 +567,7 @@ def ode_sde_em(f: Callable, # function
     rtol = options.get('rel_tol', 1e-3)
     atol = options.get('abs_tol', 1e-6)
     norm_control = options.get('NormControl', 'off') == 'on'
-    max_consecutive_failures = options.get('max_consecutive_failures', 10)
+    max_failures = options.get('max_consecutive_failures', 10)
     # Initialize waitbar
     bar=Wait_bar(t_span, waitbar)  # Initialize the progress bar
     
@@ -644,7 +644,7 @@ def ode_sde_em(f: Callable, # function
     next_idx = 1  # for tspan output
     
     # Main integration loop
-    consecutive_failures = 0
+    n_failures = 0
     integration_failed= False
 
     while not finished:
@@ -683,10 +683,14 @@ def ode_sde_em(f: Callable, # function
 
             err=err.item()
             # Step acceptance
-            if err > rtol:
-                if torch.abs(h_abs - h_min) <  0.2 * h_min:
-                    consecutive_failures += 1
-                    if consecutive_failures >= max_consecutive_failures:
+            accept_step= err <= rtol
+            if accept_step:
+                    n_failures = 0
+            if h_abs <= h_min:
+                    accept_step = True
+                    n_failures +=1
+                    failed=True
+                    if n_failures >= max_failures:
                         bar.close(waitbar)
                         warnings.warn(
                             f"Step size reached minimum hmin = {h_min.item():.2e} at t={t.item():.2e}, but still cannot satisfy tolerance. "
@@ -699,8 +703,12 @@ def ode_sde_em(f: Callable, # function
                         finished = True
                         integration_failed = True
                         break
-                else:
-                    consecutive_failures = 0  # Reset if we're still above hmin
+            else:
+                n_failures = 0 # Reset if we're still above hmin
+            if accept_step:
+                error_history.append(err)
+                break
+            else:
                 # Adaptive mode: shrink step and retry
                 if no_failed:
                     no_failed = False
@@ -709,11 +717,6 @@ def ode_sde_em(f: Callable, # function
                     h_abs = torch.max(h_min, 0.5 * h_abs)
                 h = t_dir * h_abs
                 finished = False
-            else:
-                # Accept step
-                error_history.append(err)
-                consecutive_failures = 0
-                break
         n_steps += 1
         if integration_failed:
             break
