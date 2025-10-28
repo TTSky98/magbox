@@ -8,12 +8,12 @@ from typing import Union, Tuple
 import torch
 
 def safe_sin(theta: torch.Tensor, eps: float = 1e-10) -> torch.Tensor:
-    cos_theta = torch.cos(theta)
-    mask = torch.abs(cos_theta) < eps
+    sin_theta = torch.sin(theta)
+    mask = torch.abs(sin_theta) < eps
     safe_cos = torch.where(
         mask,
-        torch.ones_like(cos_theta) * eps,
-        cos_theta
+        torch.ones_like(sin_theta) * eps,
+        sin_theta
     )
     return safe_cos
 
