@@ -4,7 +4,18 @@ from . import boxlib
 from .initial import Lattice, Vars
 from .spin import spin
 import warnings
-from typing import Union
+from typing import Union, Tuple
+import torch
+
+def safe_sin(theta: torch.Tensor, eps: float = 1e-10) -> torch.Tensor:
+    cos_theta = torch.cos(theta)
+    mask = torch.abs(cos_theta) < eps
+    safe_cos = torch.where(
+        mask,
+        torch.ones_like(cos_theta) * eps,
+        cos_theta
+    )
+    return safe_cos
 
 class llg:
     def __init__(self,sp:spin,vars:Vars=Vars(),gamma=1, alpha=0.01, Temp=0., dt=0.1, T=50, rtol:Union[float,None]=None, atol:Union[float,None]=None):
@@ -23,6 +34,7 @@ class llg:
         self.h_fun=heff(sp,vars)
         self.data_type=sp.data_type
         self.device=sp.device
+        self.eps=torch.finfo(self.data_type).eps
 
         # strength for thermal field
         self.thermal_strength=torch.sqrt(2*self.alpha*self.Temp/self.gamma)
@@ -88,7 +100,7 @@ class llg:
         theta=ang[0::2]
         phi=ang[1::2]
 
-        s_theta=torch.sin(theta)
+        s_theta=safe_sin(theta, self.eps)
         c_theta=torch.cos(theta)
         s_phi=torch.sin(phi)
         c_phi=torch.cos(phi)
@@ -103,7 +115,7 @@ class llg:
         theta=ang[0::2]
         phi=ang[1::2]
 
-        s_theta=torch.sin(theta)
+        s_theta=safe_sin(theta, self.eps)
         c_theta=torch.cos(theta)
         s_phi=torch.sin(phi)
         c_phi=torch.cos(phi)
@@ -120,7 +132,7 @@ class llg:
         cot_theta=c_theta/s_theta
         value=self.gamma * self.alpha * self.Temp/(1+self.alpha**2)*torch.cat([cot_theta, torch.zeros(self.num,1,dtype=self.data_type,device=self.device)],1)
         return value.reshape(-1,1)
-    def run(self,sp):
+    def run(self,sp)-> Tuple[torch.Tensor,torch.Tensor,dict, dict]:
         # error control
         if self.rtol is None:
             if self.Temp ==0 :

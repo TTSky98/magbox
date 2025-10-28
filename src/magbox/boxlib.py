@@ -1,12 +1,9 @@
 import torch
 from typing import Callable, Tuple, Dict, Any, Optional
-from tqdm import tqdm
-import time
 import warnings
 import math
 from .Wait_bar import Wait_bar
-from .initial import Lattice, Vars
-from .spin import spin
+from .initial import Lattice
 
 def get_data_type(type):
     if type=="f32":
@@ -686,11 +683,11 @@ def ode_sde_em(f: Callable, # function
             accept_step= err <= rtol
             if accept_step:
                     n_failures = 0
-            if h_abs <= h_min:
+            if h_abs <= h_min: # accept the step when h reaches h_min
                     accept_step = True
                     n_failures +=1
                     failed=True
-                    if n_failures >= max_failures:
+                    if n_failures >= max_failures: # Stop integration when h is too small for too many  consecutive times
                         bar.close(waitbar)
                         warnings.warn(
                             f"Step size reached minimum hmin = {h_min.item():.2e} at t={t.item():.2e}, but still cannot satisfy tolerance. "
