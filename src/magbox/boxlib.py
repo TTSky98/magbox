@@ -390,7 +390,7 @@ class eq_solver:
             if integration_failed:
                 break
             # Update waitbar if enabled
-            bar.update(t_new, waitbar, finished)
+            bar.update(t_new, h, waitbar, finished)
             # output
             if output_pos ==2: # computed points
                 nout_new = 1
@@ -569,15 +569,7 @@ def ode_sde_em(f: Callable, # function
     norm_control = options.get('NormControl', 'off') == 'on'
     max_consecutive_failures = options.get('max_consecutive_failures', 10)
     # Initialize waitbar
-    if waitbar:
-        # Estimate total progress based on time span
-        t0 = t_span[0].item()
-        t_final = t_span[-1].item()
-        total_progress = t_final - t0
-        pbar = tqdm(total=total_progress, desc='ODE Integration', 
-                unit='time', ncols=100, bar_format='{l_bar}{bar}| {n:.2f}/{total_fmt} [{elapsed}<{remaining}]')
-        last_update_time = time.time()
-        update_interval = 0.1  # Update progress bar every 0.1 seconds
+    bar=Wait_bar(t_span, waitbar)  # Initialize the progress bar
     
     # Initialize solution storage
     t0 = t_span[0]
@@ -695,8 +687,7 @@ def ode_sde_em(f: Callable, # function
                 if torch.abs(h_abs - h_min) <  0.2 * h_min:
                     consecutive_failures += 1
                     if consecutive_failures >= max_consecutive_failures:
-                        if waitbar:
-                            pbar.close()
+                        bar.close(waitbar)
                         warnings.warn(
                             f"Step size reached minimum hmin = {h_min.item():.2e} at t={t.item():.2e}, but still cannot satisfy tolerance. "
                             f"Current error: {err:.2e}, Required tolerance: {rtol:.2e}. "
@@ -728,13 +719,7 @@ def ode_sde_em(f: Callable, # function
             break
 
         # Update waitbar if enabled
-        if waitbar:
-            current_time = time.time()
-            if current_time - last_update_time >= update_interval or finished:
-                progress = t_new.item() - t0.item()
-                pbar.n = min(progress, total_progress)
-                pbar.refresh()
-                last_update_time = current_time
+        bar.update(t_new, h, waitbar, finished)
         
         # Output processing
         if output_pos == 2:  # computed points, no refinement
@@ -799,10 +784,7 @@ def ode_sde_em(f: Callable, # function
         f1, g1 = f(t,y)
         n_calls += 1
     # Close waitbar
-    if waitbar:
-        pbar.n = total_progress
-        pbar.refresh()
-        pbar.close()
+    bar.close(waitbar)
 
     # Prepare outputs
     t_out = t_out[:n_out+1]
