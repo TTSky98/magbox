@@ -10,7 +10,7 @@ class Wait_bar:
             self.t_final = t_span[-1].item()
             self.total_progress = self.t_final - self.t0
             self.pbar = tqdm(total=self.total_progress, desc='ODE Integration', 
-                    unit='time', ncols=100, bar_format='{l_bar}{bar}| {n:.2f}/{total_fmt} [{elapsed}<{remaining},{postfix}]')
+                    unit='time', ncols=100, bar_format='{l_bar}{bar}| {n:.2f}/{total_fmt} [{elapsed}<{remaining}{postfix}]')
             self.pbar.set_postfix(dt=format(h,'.2e'))
             self.last_update_time = time.time()
             self.update_interval = 0.2  # Update progress bar every 0.1 seconds
