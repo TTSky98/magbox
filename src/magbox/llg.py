@@ -126,7 +126,7 @@ class llg:
             if self.Temp ==0 :
                 rtol=max(self.alpha.item()*1e-2,1e-3)
             else:
-                rtol=max(self.alpha.item()/2,5e-2)
+                rtol=max(self.alpha.item()/5,1e-2)
         else:
             rtol=self.rtol
 

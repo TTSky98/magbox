@@ -418,7 +418,7 @@ class eq_solver:
                         y_interp = interp_fun(t_span[next_idx], t, y, h, f_list, interp_coeff)
                         y_out_new = torch.cat([y_out_new, y_interp], dim=1)
                     next_idx += 1
-            # y_out_new = y_out_new % t2pi
+            y_out_new = y_out_new % t2pi
             # Store output
             if nout_new > 0:
                 old_nout = n_out
@@ -440,7 +440,7 @@ class eq_solver:
         
             t=t_new
             y=y_new
-            # y=y % t2pi
+            y=y % t2pi
             f1 = f_list[:,-1:]
 
         bar.close(waitbar)
