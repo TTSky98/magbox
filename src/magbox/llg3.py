@@ -63,13 +63,18 @@ class llg3:
         h3=self.h_fun.all3(t,x,y,z)
         drift_core=M @ h3 + self.alpha*M @ (M @ h3)
         return self.prefactor*drift_core
-    def llg_thermal(self, t, S):
+    def llg_thermal_no_correction(self, t, S):
         x,y,z=spin3.get_xyz(S)
         M=self.M_cross_mat(x,y,z)
         h3=self.h_fun.all3(t,x,y,z)
-        drift_core=M @ h3 + self.alpha*M @ (M @ h3)
+        kernal=M+ self.alpha*M @ M
+        drift_kernal=kernal @ h3
         correction=self.Stratonovich_correction(S)
-        return self.prefactor*drift_core-correction, self.thermal_strength*self.prefactor*drift_core
+        return self.prefactor*drift_kernal, self.thermal_strength*self.prefactor*kernal
+    def llg_thermal(self, t, S):
+        f, g =self.llg_thermal_no_correction(t,S)
+        correction = self.Stratonovich_correction(S) 
+        return f-correction, g
 
     def Stratonovich_correction(self,S):
         return self.prefactor*self.alpha*self.Temp*S

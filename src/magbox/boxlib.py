@@ -1158,8 +1158,11 @@ def ode3_sde_em(f: Callable, # function
     n_failures = 0
     integration_failed= False
 
+    
+
     while not finished:
         h_abs = torch.min(h_max, torch.max(h_min, h_abs))
+        # h_abs = t_span[1]-t_span[0] # dbug
         h = t_dir * h_abs
         if 1.1 * h_abs >= torch.abs(t_final - t):
             h = t_final - t
@@ -1173,7 +1176,7 @@ def ode3_sde_em(f: Callable, # function
         while True:
             gw11 = g1 @ W1
             h_absinv2_sqrt=torch.sqrt(h_abs/2)
-            y2 = y+ f1 * h/2 + gw11 * h_absinv2_sqrt
+            y2 = y+ f1 * h/2 + gw11 * h_absinv2_sqrt 
             t2 = t + h / 2
             f2, g2 = f(t2, y2)
             
@@ -1200,6 +1203,7 @@ def ode3_sde_em(f: Callable, # function
             err=err.item()
             # Step acceptance
             accept_step= err <= rtol
+            # accept_step = True # debug
             if accept_step:
                     n_failures = 0
             if h_abs <= h_min: # accept the step when h reaches h_min

@@ -2,6 +2,9 @@
 __pycache__
 .venv
 *.prof
-
+*.npz
+# fig
+*png
 # VS Code
 .vscode/
+
