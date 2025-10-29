@@ -53,23 +53,22 @@ def test_spin_chain(N,K,J,dt,T):
     rng=np.random.default_rng()
     theta0=np.ones(N)*0.01
     phi0=rng.random(N)*2*np.pi
-    z=np.cos(theta0)
-    x=np.sin(theta0)*np.cos(phi0)
-    y=np.sin(theta0)*np.sin(phi0)
     # phi0=10*np.arange(N)/N *2*np.pi
     LT = magbox.Lattice(type="square", size=[N], periodic=True)
     vars = magbox.Vars(K1=K, J=J)
     dispersion_fun=lambda qf: K+J*(1-np.cos(qf))*np.cos(np.mean(theta0))
 
-    spin=magbox.spin3(x, y, z,LT, device='cpu',dtype='f64')
-    sf=magbox.llg3(spin,vars,alpha=0,T=T,dt=dt)
+    spin=magbox.spin(theta0,phi0,LT,device='cpu',type='f64')
+    sf=magbox.llg(spin,vars,alpha=0,T=T,dt=dt)
 
-    t_tc,S,stats,err_info=sf.run(spin)
+    t_tc,ang,stats,err_info=sf.run(spin)
     t=t_tc.cpu().detach().numpy()
+    theta=ang[::2].cpu().detach().numpy()
+    phi=ang[1::2].cpu().detach().numpy()
 
-    x=S[::3].detach().cpu().numpy()
-    y=S[1::3].detach().cpu().numpy()
-    z=S[2::3].detach().cpu().numpy()
+    x=np.sin(theta)*np.cos(phi)
+    y=np.sin(theta)*np.sin(phi)
+    z=np.cos(theta)
 
     u=x+1j*y
     ft=np.fft.fft2(u)
