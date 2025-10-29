@@ -68,12 +68,11 @@ class llg3:
         M=self.M_cross_mat(x,y,z)
         h3=self.h_fun.all3(t,x,y,z)
         drift_core=M @ h3 + self.alpha*M @ (M @ h3)
-        return self.prefactor*drift_core, self.thermal_strength*self.prefactor*drift_core
+        correction=self.Stratonovich_correction(S)
+        return self.prefactor*drift_core-correction, self.thermal_strength*self.prefactor*drift_core
 
-    def Stratonovich_correction(self,s_theta,c_theta):
-        cot_theta=c_theta/s_theta
-        value=self.gamma * self.alpha * self.Temp/(1+self.alpha**2)*torch.cat([cot_theta, torch.zeros(self.num,1,dtype=self.dtype,device=self.device)],1)
-        return value.reshape(-1,1)
+    def Stratonovich_correction(self,S):
+        return self.prefactor*self.alpha*self.Temp*S
     def run(self,sp:spin3)-> Tuple[torch.Tensor,torch.Tensor,dict, dict]:
         # error control
         if self.rtol is None:

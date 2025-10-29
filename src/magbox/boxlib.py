@@ -706,7 +706,7 @@ def ode_rk45(ode_fun: Callable, t_span: torch.Tensor, y0: torch.Tensor,
     y : torch.Tensor
         Solution values
     stats : dict
-        Statistics (nfevals)
+        Statistics (n_calls)
     err_info : dict
         Error history and max step error
     """
@@ -742,7 +742,7 @@ def ode3_rk45(ode_fun: Callable, t_span: torch.Tensor, y0: torch.Tensor,
     y : torch.Tensor
         Solution values
     stats : dict
-        Statistics (nfevals)
+        Statistics (n_calls)
     err_info : dict
         Error history and max step error
     """
@@ -1026,7 +1026,7 @@ def ode_sde_em(f: Callable, # function
     t_out = t_out[:n_out+1]
     y_out = y_out[:, :n_out+1]
     
-    stats = {'n_fevals': n_calls,
+    stats = {'n_calls': n_calls,
              'n_steps': n_steps,
              'n_output': n_out+1,
              'intergration': not integration_failed}
@@ -1310,7 +1310,7 @@ def ode3_sde_em(f: Callable, # function
     t_out = t_out[:n_out+1]
     y_out = y_out[:, :n_out+1]
     
-    stats = {'n_fevals': n_calls,
+    stats = {'n_calls': n_calls,
              'n_steps': n_steps,
              'n_output': n_out+1,
              'intergration': not integration_failed}
