@@ -7,17 +7,17 @@ class spin:
     def __init__(self, theta, phi, lattice_type: Lattice,type="f32", device="gpu",thread:int=4):
         torch.set_num_threads(thread)
         data_type=boxlib.get_data_type(type)
-        self.data_type=data_type
+        self.dtype=data_type
         self.device=boxlib.get_device(device)
         if isinstance(theta,torch.Tensor):
-            self.theta=theta.to(device=self.device,dtype=self.data_type)
+            self.theta=theta.to(device=self.device,dtype=self.dtype)
         else:
-            self.theta = torch.tensor(theta,dtype=self.data_type,device=self.device)
+            self.theta = torch.tensor(theta,dtype=self.dtype,device=self.device)
 
         if isinstance(phi,torch.Tensor):
-            self.phi=phi.to(device=self.device,dtype=self.data_type)
+            self.phi=phi.to(device=self.device,dtype=self.dtype)
         else:
-            self.phi = torch.tensor(phi,dtype=self.data_type,device=self.device)
+            self.phi = torch.tensor(phi,dtype=self.dtype,device=self.device)
 
         self.theta=self.theta.view(-1,1)
         self.phi=self.phi.view(-1,1)

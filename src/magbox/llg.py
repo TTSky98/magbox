@@ -22,7 +22,7 @@ class llg:
         warnings.filterwarnings("ignore", message="Sparse CSR tensor support is in beta state")
         self.rtol=rtol
         self.atol=atol
-        data_type=sp.data_type
+        data_type=sp.dtype
         device=sp.device
         self.num=sp.num
         self.gamma=torch.tensor(gamma,dtype=data_type,device=device)
@@ -32,7 +32,7 @@ class llg:
         self.T=torch.tensor(T,dtype=data_type,device=device)
         self.tspan=torch.linspace(0,self.T,int(self.T/self.dt)+1,dtype=data_type,device=device)
         self.h_fun=heff(sp,vars)
-        self.data_type=sp.data_type
+        self.data_type=sp.dtype
         self.device=sp.device
         self.eps=torch.finfo(self.data_type).eps
 
