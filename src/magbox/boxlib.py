@@ -809,6 +809,9 @@ def ode_sde_em(f: Callable, # function
     # Data type
     dtype = y0.dtype
     device = y0.device
+
+    m1_sqrt2=torch.tensor(1-math.sqrt(2),dtype=dtype,device=device)
+    sqrt2=torch.tensor(math.sqrt(2),dtype=dtype,device=device)
     
     # Step size constraints
     h_min = 16 * torch.finfo(dtype).eps
@@ -883,20 +886,25 @@ def ode_sde_em(f: Callable, # function
         no_failed = True
         W1=torch.randn(noise_dim,1,dtype=dtype,device=device)
         W2=torch.randn(noise_dim,1,dtype=dtype,device=device)
-        W=W1+W2
+        # W=W1+W2
         while True:
-            y2 = y+ f1 * h/2 + g1 @ W1 * torch.sqrt(h_abs/2)
+            gw11 = g1 @ W1
+            h_absinv2_sqrt=torch.sqrt(h_abs/2)
+            y2 = y+ f1 * h/2 + gw11 * h_absinv2_sqrt
             t2 = t + h / 2
             f2, g2 = f(t2, y2)
             
-            y_new = y + f2 *h/2 + g2 @ W2 * torch.sqrt(h_abs/2)
+
+            gw22 = g2 @ W2
+            y_new = y2 + f2 *h/2 + gw22 * h_absinv2_sqrt
             t_new = t + h
 
-            y_full = y + f1 * h + g1 @ W * torch.sqrt(h_abs)
+            gw12 = g1 @ W2
+            # y_full = y + f1 * h + gw * torch.sqrt(h_abs)
             
             n_calls += 1
             
-            fE= y_new - y_full
+            fE= h/2*(f1-f2) + h_absinv2_sqrt*(m1_sqrt2*gw11+gw22-sqrt2*gw12)
             if norm_control:
                 norm_y_new = torch.norm(y_new)
                 scaling_Factor = torch.max(torch.max(norm_y, norm_y_new), threshold)
@@ -1084,6 +1092,9 @@ def ode3_sde_em(f: Callable, # function
     # Data type
     dtype = y0.dtype
     device = y0.device
+
+    m1_sqrt2=torch.tensor(1-math.sqrt(2),dtype=dtype,device=device)
+    sqrt2=torch.tensor(math.sqrt(2),dtype=dtype,device=device)
     
     # Step size constraints
     h_min = 16 * torch.finfo(dtype).eps
@@ -1160,18 +1171,23 @@ def ode3_sde_em(f: Callable, # function
         W2=torch.randn(noise_dim,1,dtype=dtype,device=device)
         W=W1+W2
         while True:
-            y2 = y+ f1 * h/2 + g1 @ W1 * torch.sqrt(h_abs/2)
+            gw11 = g1 @ W1
+            h_absinv2_sqrt=torch.sqrt(h_abs/2)
+            y2 = y+ f1 * h/2 + gw11 * h_absinv2_sqrt
             t2 = t + h / 2
             f2, g2 = f(t2, y2)
             
-            y_new = y + f2 *h/2 + g2 @ W2 * torch.sqrt(h_abs/2)
+
+            gw22 = g2 @ W2
+            y_new = y2 + f2 *h/2 + gw22 * h_absinv2_sqrt
             t_new = t + h
 
-            y_full = y + f1 * h + g1 @ W * torch.sqrt(h_abs)
+            gw12 = g1 @ W2
+            # y_full = y + f1 * h + gw * torch.sqrt(h_abs)
             
             n_calls += 1
             
-            fE= y_new - y_full
+            fE= h/2*(f1-f2) + h_absinv2_sqrt*(m1_sqrt2*gw11+gw22-sqrt2*gw12)
             if norm_control:
                 norm_y_new = torch.norm(y_new)
                 scaling_Factor = torch.max(torch.max(norm_y, norm_y_new), threshold)
