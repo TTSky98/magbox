@@ -1035,6 +1035,7 @@ def ode_sde_em(f: Callable, # function
         'max_step_error': max(error_history) if error_history else 0.0
     }
     return t_out,y_out,stats,err_info
+@torch.no_grad()
 def ode3_sde_em(f: Callable, # function
                 t_span: torch.Tensor, 
                 y0: torch.Tensor, 
@@ -1158,8 +1159,6 @@ def ode3_sde_em(f: Callable, # function
     n_failures = 0
     integration_failed= False
 
-    
-
     while not finished:
         h_abs = torch.min(h_max, torch.max(h_min, h_abs))
         # h_abs = t_span[1]-t_span[0] # dbug
@@ -1172,7 +1171,6 @@ def ode3_sde_em(f: Callable, # function
         no_failed = True
         W1=torch.randn(noise_dim,1,dtype=dtype,device=device)
         W2=torch.randn(noise_dim,1,dtype=dtype,device=device)
-        W=W1+W2
         while True:
             gw11 = g1 @ W1
             h_absinv2_sqrt=torch.sqrt(h_abs/2)
@@ -1186,7 +1184,6 @@ def ode3_sde_em(f: Callable, # function
             t_new = t + h
 
             gw12 = g1 @ W2
-            # y_full = y + f1 * h + gw * torch.sqrt(h_abs)
             
             n_calls += 1
             
@@ -1203,13 +1200,12 @@ def ode3_sde_em(f: Callable, # function
             err=err.item()
             # Step acceptance
             accept_step= err <= rtol
-            # accept_step = True # debug
             if accept_step:
                     n_failures = 0
             if h_abs <= h_min: # accept the step when h reaches h_min
                     accept_step = True
                     n_failures +=1
-                    failed=True
+                    no_failed=False
                     if n_failures >= max_failures: # Stop integration when h is too small for too many  consecutive times
                         bar.close(waitbar)
                         warnings.warn(

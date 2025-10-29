@@ -5,8 +5,6 @@ from .initial import Lattice, Vars
 from .spin3 import spin3
 import warnings
 from typing import Union, Tuple
-import torch
-
 
 class llg3:
     def __init__(self,sp:spin3,vars:Vars=Vars(),gamma=1, alpha=0.01, Temp=0., dt=0.1, T=50, rtol:Union[float,None]=None, atol:Union[float,None]=None):
@@ -51,11 +49,28 @@ class llg3:
         pos_in_group = torch.arange(total_length,dtype=torch.int64,device=device) % 6
         self.csr_col=group_indices * 3 + col_pattern[pos_in_group]
 
+        '''
+        format:[[*,*,*]
+                [*,*,*]
+                [*,*,*]]
+        '''
+        total_length = 9 * self.num
+        self.M2_csr_crow = torch.arange(0,total_length+1,step=3, dtype=torch.int64,device=device)
+        col_pattern=torch.tensor([0,1,2,0,1,2,0,1,2],dtype=torch.int64,device=device)
+        group_indices = torch.arange(total_length,dtype=torch.int64,device=device) // 9
+        pos_in_group = torch.arange(total_length,dtype=torch.int64,device=device) % 9
+        self.M2_csr_col=group_indices * 3 + col_pattern[pos_in_group]
     def M_cross_mat(self,x,y,z):
         value=torch.cat([-z,y,
                          z,-x,
                          -y,x],dim=1)
         return torch.sparse_csr_tensor(self.csr_crow,self.csr_col,value.reshape(-1),(self.num*3, self.num*3),device=self.device,dtype=self.dtype)
+    def M2_cross_mat(self,x,y,z):
+        a=self.alpha
+        value=torch.cat([a*(-x**2-z**2),a*x*y-z,a*x*z+y,
+                         a*x*y+z,a*(-x**2-z**2), a*y*z-x,
+                         a*x*z-y,a*y*z+x, a*(-x**2-z**2)],dim=1)
+        return torch.sparse_csr_tensor(self.M2_csr_crow,self.M2_csr_col,value.reshape(-1),(self.num*3, self.num*3),device=self.device,dtype=self.dtype)
 
     def llg_drift(self,t, S):
         x,y,z=spin3.get_xyz(S)
@@ -63,19 +78,18 @@ class llg3:
         h3=self.h_fun.all3(t,x,y,z)
         drift_core=M @ h3 + self.alpha*M @ (M @ h3)
         return self.prefactor*drift_core
+    
     def llg_thermal_no_correction(self, t, S):
         x,y,z=spin3.get_xyz(S)
-        M=self.M_cross_mat(x,y,z)
+        M2=self.M2_cross_mat(x,y,z)
         h3=self.h_fun.all3(t,x,y,z)
-        kernal=M+ self.alpha*M @ M
-        drift_kernal=kernal @ h3
-        correction=self.Stratonovich_correction(S)
-        return self.prefactor*drift_kernal, self.thermal_strength*self.prefactor*kernal
+        f=self.prefactor * (M2 @ h3)
+        g=self.thermal_strength*self.prefactor*M2
+        return f, g
     def llg_thermal(self, t, S):
         f, g =self.llg_thermal_no_correction(t,S)
         correction = self.Stratonovich_correction(S) 
-        return f-correction, g
-
+        return f-correction, g  
     def Stratonovich_correction(self,S):
         return self.prefactor*self.alpha*self.Temp*S
     def run(self,sp:spin3)-> Tuple[torch.Tensor,torch.Tensor,dict, dict]:
