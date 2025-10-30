@@ -7,6 +7,7 @@ class Lattice:
     type: str = field(default_factory=str)
     periodic: Union[bool, list[bool]] = field(default_factory=lambda: True)
     J_direction: Union[int, None] = field(default_factory=lambda: None)
+    force_periodic: bool = field(default_factory=lambda: False)
 
 @dataclass
 class Vars:

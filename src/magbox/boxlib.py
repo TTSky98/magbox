@@ -38,19 +38,32 @@ def get_Jmtx(lattice_type: Lattice,device=torch.device("cuda"),data_type=torch.f
         elif N_dim==2:
             N=N+[1]
             
-        pd0=lattice_type.periodic
-        if is_bool_or_single_bool_list(pd0):
-            pd=create_bool_list(pd0, N)
+        pd=lattice_type.periodic #type: ignore
+        Force_keep_pd = lattice_type.force_periodic
+        if is_bool_or_single_bool_list(pd):
+            pd=create_bool_list(pd, N) 
             if N_dim==1:
                 pd[1]=False
                 pd[2]=False
             elif N_dim==2:
                 pd[2]=False
+        pd: list[bool] = pd
         direction=lattice_type.J_direction
         totalN=math.prod(N)
         N1=N[0]
         N2=N[1]
         N3=N[2]
+        pd_warning_flag = [False, False, False]
+        forced_dim=[]
+        for i in range(3):
+            if N[i] <=2 and pd[i]:
+                if not Force_keep_pd:
+                    pd[i] = False
+                forced_dim.append(i)
+                pd_warning_flag[i] = True
+        if Force_keep_pd and any(pd_warning_flag):
+            warnings.warn(f"Periodic boundary condition in the dimension with length equal to 1 or 2 is set to True. This may cause errors in the simulation. Forced dimension:{forced_dim}", UserWarning, stacklevel=2)
+            
         if direction is None:
             # 所有方向的耦合
             v = torch.ones(3 * totalN - N1 * N2 - N2 * N3 - N3 * N1, dtype=data_type,device=device) / 2
