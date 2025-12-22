@@ -9,6 +9,10 @@ dependencies = [
     "tqdm>=4.67.1",
 ]
 dynamic = ["version"]
+license = { file = "LICENSE" }
+classifiers = [
+  "License :: OSI Approved :: Apache Software License",
+]
 
 [tool.uv.sources]
 torch = [
