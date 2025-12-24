@@ -3,7 +3,7 @@ import numpy as np
 import os
 import pytest
 
-testdata = [ # N, K, J, dt ,T
+testdata = [ # N, K, J, K_hard
     (256,1.0,0.5,1),
     (512,1.0,0.5,2),
     (1024,1.0,0.5,3),
@@ -44,7 +44,7 @@ def plot_fun(t,x,y,ft_abs,q,w,dispersion,dispersion_theory,err,mean_err,max_err)
     # plt.title(f"mean error: {mean_err:.2e}, max err: {max_err:.2e}")
     plt.show()
 
-@pytest.mark.parametrize("N,K,J,dt,T",testdata)
+@pytest.mark.parametrize("N,K,J,K_hard",testdata)
 def test_spin_chain(N,K,J,K_hard):
     # N=256
     # K=1.0
@@ -64,7 +64,8 @@ def test_spin_chain(N,K,J,K_hard):
     LT = magbox.Lattice(type="square", size=[N], periodic=True)
     vars = magbox.Vars(K1=K, J=J, custom_kernel=(hard_kernel,), custom_heff=hard_axis_heff)
 
-    dispersion_fun=lambda qf: np.sqrt((K+J*(1-np.cos(qf))*np.cos(np.mean(theta0))+K_hard)*(K+J*(1-np.cos(qf))*np.cos(np.mean(theta0))))
+    def dispersion_fun(qf):
+        return np.sqrt((K+J*(1-np.cos(qf))*np.cos(np.mean(theta0))+K_hard)*(K+J*(1-np.cos(qf))*np.cos(np.mean(theta0))))
     q=np.fft.fftfreq(N,1)*2*np.pi
     q=np.fft.fftshift(q)
     dispersion_theory=dispersion_fun(q)
