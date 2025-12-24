@@ -1,6 +1,7 @@
 from __future__ import annotations
 import torch
 import scipy.sparse
+import numpy as np
 from typing import Optional, Callable, cast
 from . import boxlib
 from .initial import Vars, Lattice
@@ -47,7 +48,7 @@ class heff3:
                 elif scipy.sparse.issparse(item):
                     coo = item.tocoo()
                     values = coo.data
-                    indices = [coo.row, coo.col]
+                    indices = np.array([coo.row, coo.col])
                     i = torch.tensor(indices, dtype=torch.long, device=self.device)
                     sparse_values = torch.tensor(values, dtype=self.data_type, device=self.device)
                     t = torch.sparse_coo_tensor(i, sparse_values, coo.shape, device=self.device)
