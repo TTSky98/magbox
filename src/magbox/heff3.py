@@ -36,7 +36,24 @@ class heff3:
         self.device=sp.device
 
         self.custom_field_fn = vars.custom_heff
-        self.custom_kernel = vars.custom_kernel
+        
+        raw_kernel = vars.custom_kernel
+        if isinstance(raw_kernel, tuple):
+            processed_kernel = []
+            for item in raw_kernel:
+                if isinstance(item, torch.Tensor):
+                    processed_kernel.append(item)
+                else:
+                    t = torch.as_tensor(item, device=self.device,dtype=self.data_type)
+                    if t.numel() > 0:
+                        sparsity = 1.0 - (float(t.count_nonzero()) / t.numel())
+                        if sparsity >= 0.5:
+                            t = t.to_sparse()
+                    processed_kernel.append(t)
+            self.custom_kernel = tuple(processed_kernel)
+        else:
+            self.custom_kernel = raw_kernel
+
         if self.custom_field_fn is not None and not callable(self.custom_field_fn):
             raise TypeError("Vars.custom_heff must be callable or None")
         l_type=sp.lattice_type
@@ -72,10 +89,6 @@ class heff3:
                 raise TypeError("custom_heff must return a torch.Tensor")
             if custom_out.shape != (self.num,3):
                 raise ValueError(f"custom_heff output shape should be {(self.num,3)}, got {tuple(custom_out.shape)}")
-            if custom_out.device != self.device:
-                raise ValueError(f"custom_heff output device should be {self.device}, got {custom_out.device}")
-            if custom_out.dtype != self.data_type:
-                raise ValueError(f"custom_heff output dtype should be {self.data_type}, got {custom_out.dtype}")
     def energy(self, S: torch.Tensor) -> torch.Tensor:
         x = S[::3, : ]
         y = S[::3, : ]
