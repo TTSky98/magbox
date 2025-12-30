@@ -30,7 +30,7 @@ class Wait_bar:
             if current_time - self.last_update_time >= self.update_interval or done:
                 progress = t.item() - self.t0
                 self.pbar.n = min(progress,self.total_progress)
-                self.pbar.set_postfix(dt=format(h,'.2e'))
+                self.pbar.set_postfix(dt=format(h,'.2e'), refresh=False)
                 self.pbar.refresh()
                 self.last_update_time = current_time
     def close(self,flag):
