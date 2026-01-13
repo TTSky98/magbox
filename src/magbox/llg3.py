@@ -67,9 +67,9 @@ class llg3:
         return torch.sparse_csr_tensor(self.csr_crow,self.csr_col,value.reshape(-1),(self.num*3, self.num*3),device=self.device,dtype=self.dtype)
     def M2_cross_mat(self,x,y,z):
         a=self.alpha
-        value=torch.cat([a*(-x**2-z**2),a*x*y-z,a*x*z+y,
+        value=torch.cat([a*(-y**2-z**2),a*x*y-z,a*x*z+y,
                          a*x*y+z,a*(-x**2-z**2), a*y*z-x,
-                         a*x*z-y,a*y*z+x, a*(-x**2-z**2)],dim=1)
+                         a*x*z-y,a*y*z+x, a*(-x**2-y**2)],dim=1)
         return torch.sparse_csr_tensor(self.M2_csr_crow,self.M2_csr_col,value.reshape(-1),(self.num*3, self.num*3),device=self.device,dtype=self.dtype)
 
     def llg_drift(self,t, S):
@@ -115,6 +115,6 @@ class llg3:
             llg_fun=self.llg_drift
             t,Sout,stats,erro_info=boxlib.ode3_rk45(llg_fun, self.tspan, ini, options=odeset)
         else:
-            llg_fun=self.llg_thermal
+            llg_fun=self.llg_thermal_no_correction
             t,Sout,stats,erro_info=boxlib.ode3_sde_em(llg_fun, self.tspan,ini, options=odeset)
         return t,Sout,stats,erro_info
