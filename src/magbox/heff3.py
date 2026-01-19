@@ -33,7 +33,7 @@ class heff3:
         self.K1=torch.tensor(K1,dtype=sp.dtype,device=sp.device)
         self.K1=self.K1*self.K_dir
 
-        self.H = torch.zeros((self.num,3))
+        # self.H = torch.zeros((self.num,3))
         self.data_type=sp.dtype
         self.device=sp.device
 
@@ -73,16 +73,19 @@ class heff3:
         if isinstance(J,(int,float)) or (isinstance(J,list) and len(J)==1):
             J_val=J[0] if isinstance(J,list) else J
             self.has_J = bool(J_val)
-            self.Jmtx=J_val*boxlib.get_Jmtx(replace(l_type,J_direction=None), device=sp.device,data_type=sp.dtype)
+            J_tensor = torch.tensor(J_val,dtype=sp.dtype,device=sp.device)
+            self.Jmtx=J_tensor*boxlib.get_Jmtx(replace(l_type,J_direction=None), device=sp.device,data_type=sp.dtype)
         elif isinstance(J,list):
             if len(J)!=N_dim:
                 raise ValueError(f"J should be a scalar or a list of length {N_dim}")
             # self.Jmtx=J.to(device=spin.device,dtype=spin.data_type)
             self.Jmtx=torch.zeros((self.num,self.num),dtype=sp.dtype,device=sp.device)
             for i in range(N_dim):
-                self.Jmtx+=J[i]*boxlib.get_Jmtx(replace(l_type,J_direction=i), device=sp.device,data_type=sp.dtype)
+                J_val = J[i]
+                J_tensor = torch.tensor(J_val, dtype=sp.dtype, device=sp.device)
+                self.Jmtx = self.Jmtx + J_tensor*boxlib.get_Jmtx(replace(l_type,J_direction=i), device=sp.device,data_type=sp.dtype)
             self.has_J = any(bool(v) for v in J)
-
+             
         self.has_B = bool(torch.norm(self.B).item())
         self.has_K1 = bool(torch.norm(self.K1).item())
         self.has_custom = self.custom_field_fn is not None
@@ -99,6 +102,11 @@ class heff3:
                 raise TypeError("custom_heff must return a torch.Tensor")
             if custom_out.shape != (self.num,3):
                 raise ValueError(f"custom_heff output shape should be {(self.num,3)}, got {tuple(custom_out.shape)}")
+
+        if vars.require_vars_grad:
+            self.B.requires_grad_(True)
+            self.K1.requires_grad_(True)
+            self.Jmtx.requires_grad_(True)
     def energy(self, S: torch.Tensor) -> torch.Tensor:
         x = S[::3, : ]
         y = S[::3, : ]
