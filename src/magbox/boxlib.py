@@ -508,12 +508,12 @@ class eq3_solver(eq_solver):
         order=self.order
         interp_coeff=self.interp_coeff
 
-        f1=ode_fcn(t,y).view(-1,1)
+        f1=ode_fcn(t,y)
         
         n_calls=1
 
         t_out[n_out]=t
-        y_out[:,n_out]=y.view(-1)
+        y_out[:,n_out]=y
 
         t2pi=torch.tensor(2*math.pi,dtype=dtype,device=device)
         h = torch.min(h_max, torch.max(h_min, 0.1 * torch.abs(t_final -t0)))
