@@ -35,11 +35,12 @@ def run_thermal(dt: float = 0.1,
     y0=np.sin(theta0)*np.sin(phi0)
     z0=np.cos(theta0)
 
-    sp = spin3(x0,y0,z0, lattice_type=lt, device=device, dtype=dtype)
-    sf = llg3(sp, vars=vars, dt=dt, alpha=alpha, T = T, Temp=Temp, gamma=gamma, rtol=1e-2)  # type: ignore
+    sf = llg3(x0,y0,z0, lt, vars=vars, device=device, dtype=dtype,
+              dt=dt, alpha=alpha, T = T, Temp=Temp, gamma=gamma, rtol=1e-1)  # type: ignore
 
-    t, S, stats, erro_info = sf.run(sp)
-    z=S[2::3,:].detach().cpu().numpy()
+    t, S, stats, erro_info = sf.run()
+    S=S.reshape(len(t), N1, 3)
+    z=S[..., 2].detach().cpu().numpy()
 
     en=1/2*(1-z**2)
 
@@ -85,8 +86,8 @@ def plot_thermal(npz_file:  Path,
     idx = min(len(t_np) -2*bins, int(start_time / (t_np[1] - t_np[0])))
 
     # 直方图
-    en_mean=np.mean(en,0)
-    en_st=en[:,idx:]
+    en_mean=np.mean(en,axis=1)
+    en_st=en[idx:,:]
     en_st=en_st.reshape(-1)
     hist, bin_edges = np.histogram(en_st, bins=bins)
     bin_centers = 0.5 * (bin_edges[:-1] + bin_edges[1:])

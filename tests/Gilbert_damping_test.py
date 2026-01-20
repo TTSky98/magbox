@@ -76,18 +76,19 @@ def test_energy_damping(N,K,J,alpha):
     LT = magbox.Lattice(type="square", size=[N], periodic=True)
     vars = magbox.Vars(K1=K, J=J)
 
-    spin=magbox.spin3(x0,y0,z0,LT,device='cpu',dtype='f64')
-    sf=magbox.llg3(spin,vars,alpha=alpha,T=T,dt=dt)
+    sf=magbox.llg3(x0,y0,z0, LT,vars,
+                   device='cpu', dtype='f32', alpha=alpha,T=T,dt=dt)
 
-    t_tc,S,*_=sf.run(spin)
+    t_tc,S,*_=sf.run()
     t=t_tc.cpu().detach().numpy()
+    S=S.reshape(len(t),N,3)
 
-    x=S[::3].detach().cpu().numpy()
-    y=S[1::3].detach().cpu().numpy()
-    z=S[2::3].detach().cpu().numpy()
+    x=S[...,0].detach().cpu().numpy()
+    y=S[...,1].detach().cpu().numpy()
+    z=S[...,2].detach().cpu().numpy()
 
     u=x+1j*y
-    ft=np.fft.fft2(u)
+    ft=np.fft.fft2(u.T)
     ft_abs=np.abs(ft)
     w=np.fft.fftfreq(len(t), dt)*2*np.pi
     q=np.fft.fftfreq(N,1)*2*np.pi

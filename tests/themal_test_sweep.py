@@ -23,4 +23,4 @@ from pathlib import Path
 file=run_thermal(dt=0.1, alpha=0.1, Temp=0.05, T=200, dtype='f64', device='cpu', spin_num=2**8)
 
 file=Path("./thermal_test_1.npz")
-plot_thermal(file, start_time=50, bins=80,fit_counts=60)
+plot_thermal(file, start_time=50, bins=400,fit_counts=250)

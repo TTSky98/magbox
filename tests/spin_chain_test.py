@@ -76,13 +76,15 @@ def test_spin_chain(N,K,J,K_hard):
     T=np.min([int(3*2*np.pi/W_diff),2e4])
     print(f"use dt: {dt:.3e}, Total Time: {T:.3e}")
 
-    spin=magbox.spin3(x, y, z,LT, device='cpu',dtype='f32')
-    sf=magbox.llg3(spin,vars,alpha=0,T=T,dt=dt)
+    sf=magbox.llg3(x,y,z,LT,vars,
+                   device='cpu', dtype='f32', alpha=0,T=T,dt=dt)
 
-    t_tc,S,stats,err_info=sf.run(spin)
+    t_tc,S,stats,err_info=sf.run()
+    print(S.shape)
+
     t=t_tc.cpu().detach().numpy()
-
     S=S.reshape(len(t),N,3)
+    
 
     x=S[...,0].detach().cpu().numpy().squeeze()
     y=S[...,1].detach().cpu().numpy().squeeze()

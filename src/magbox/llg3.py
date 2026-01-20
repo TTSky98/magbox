@@ -7,8 +7,13 @@ import warnings
 from typing import Union, Tuple
 
 class llg3:
-    def __init__(self,sp:spin3,vars:Vars=Vars(),gamma=1, alpha=0.01, Temp=0., dt=0.1, T=50, rtol:Union[float,None]=None, atol:Union[float,None]=None):
+    def __init__(self,x,y,z, lattice_type:Lattice,vars:Vars=Vars(),
+                 dtype="f32", device="gpu", thread:int=4, require_ini_grad:bool=False,
+                 gamma=1, alpha=0.01, Temp=0., dt=0.1, T=50, rtol:Union[float,None]=None, atol:Union[float,None]=None):
         warnings.filterwarnings("ignore", message="Sparse CSR tensor support is in beta state")
+        sp = spin3(x,y,z,lattice_type,dtype=dtype, device=device, thread=thread, require_ini_grad=require_ini_grad)
+        self.spin = sp
+
         self.rtol=rtol
         self.atol=atol
         dtype=sp.dtype
@@ -31,69 +36,36 @@ class llg3:
         # strength for thermal field
         self.thermal_strength=torch.sqrt(2*self.alpha*self.Temp/self.gamma)
 
-        # prepare sparse matrix index for BSR format
-        self.block_crow=torch.arange(0,self.num+1,dtype=torch.int64,device=device)
-        self.block_col=torch.arange(0,self.num,dtype=torch.int64,device=device)
-
-        # prepare sparse matrix index for CSR format 
-        '''
-        format:[[0,*,*]
-                [*,0,*]
-                [*,*,0]]
-        '''
-        total_length = 6 * self.num
-        self.csr_crow=torch.arange(0,total_length+1,step=2, dtype=torch.int64,device=device)
-
-        col_pattern=torch.tensor([1,2,0,2,0,1],dtype=torch.int64,device=device)
-        group_indices = torch.arange(total_length,dtype=torch.int64,device=device) // 6
-        pos_in_group = torch.arange(total_length,dtype=torch.int64,device=device) % 6
-        self.csr_col=group_indices * 3 + col_pattern[pos_in_group]
-
-        '''
-        format:[[*,*,*]
-                [*,*,*]
-                [*,*,*]]
-        '''
-        total_length = 9 * self.num
-        self.M2_csr_crow = torch.arange(0,total_length+1,step=3, dtype=torch.int64,device=device)
-        col_pattern=torch.tensor([0,1,2,0,1,2,0,1,2],dtype=torch.int64,device=device)
-        group_indices = torch.arange(total_length,dtype=torch.int64,device=device) // 9
-        pos_in_group = torch.arange(total_length,dtype=torch.int64,device=device) % 9
-        self.M2_csr_col=group_indices * 3 + col_pattern[pos_in_group]
-    def M_cross_mat(self,x,y,z):
-        value=torch.cat([-z,y,
-                         z,-x,
-                         -y,x],dim=1)
-        return torch.sparse_csr_tensor(self.csr_crow,self.csr_col,value.reshape(-1),(self.num*3, self.num*3),device=self.device,dtype=self.dtype)
-    def M2_cross_mat(self,x,y,z):
-        a=self.alpha
-        value=torch.cat([a*(-y**2-z**2),a*x*y-z,a*x*z+y,
-                         a*x*y+z,a*(-x**2-z**2), a*y*z-x,
-                         a*x*z-y,a*y*z+x, a*(-x**2-y**2)],dim=1)
-        return torch.sparse_csr_tensor(self.M2_csr_crow,self.M2_csr_col,value.reshape(-1),(self.num*3, self.num*3),device=self.device,dtype=self.dtype)
-
     def llg_drift(self,t, S):
-        x,y,z=spin3.get_xyz(S)
-        M=self.M_cross_mat(x,y,z)
-        h3=self.h_fun.all3(t,x,y,z)
-        drift_core=M @ h3 + self.alpha*M @ (M @ h3)
+        x,y,z=spin3.get_xyz(S.view(-1,1))
+        h3=self.h_fun.all3(t,x,y,z).view(-1,3)
+        M1=torch.linalg.cross(S,h3,dim=1)
+        M2=torch.linalg.cross(S,M1,dim=1)
+        drift_core=M1 + self.alpha * M2
         return self.prefactor*drift_core
     
     def llg_thermal_no_correction(self, t, S):
-        x,y,z=spin3.get_xyz(S)
-        M2=self.M2_cross_mat(x,y,z)
-        h3=self.h_fun.all3(t,x,y,z)
-        f=self.prefactor * (M2 @ h3)
-        g=self.thermal_strength*self.prefactor*M2
-        return f, g
+        x,y,z=spin3.get_xyz(S.view(-1,1))
+        h3=self.h_fun.all3(t,x,y,z).view(-1,3) 
+        dim=h3.shape
+        M1=torch.linalg.cross(S,h3,dim=1)
+        M2=torch.linalg.cross(S,M1,dim=1)
+        f=self.prefactor * (M1 + self.alpha * M2)
+        def gfun(r):
+            gM1=torch.linalg.cross(S,r,dim=1)
+            gM2=torch.linalg.cross(S,gM1,dim=1)
+            return self.thermal_strength*self.prefactor * (gM1 + self.alpha * gM2)
+        return f, gfun, dim
     def llg_thermal(self, t, S):
-        f, g =self.llg_thermal_no_correction(t,S)
+        f, g, dim =self.llg_thermal_no_correction(t,S)
         correction = self.Stratonovich_correction(S) 
-        return f-correction, g  
+        return f-correction, g, dim
     def Stratonovich_correction(self,S):
         return self.prefactor*self.alpha*self.Temp*S
-    def run(self,sp:spin3)-> Tuple[torch.Tensor,torch.Tensor,dict, dict]:
+    def run(self,ini=None)-> Tuple[torch.Tensor,torch.Tensor,dict, dict]:
         # error control
+        if ini is None:
+            ini=self.spin.cart_S
         if self.rtol is None:
             if self.Temp ==0 :
                 rtol=max(self.alpha.item()*1e-2,1e-3)
@@ -110,7 +82,7 @@ class llg3:
         else:
             atol=self.atol
         odeset={"rel_tol":rtol,"abs_tol":atol}
-        ini=sp.S
+        
         if self.Temp==0:
             llg_fun=self.llg_drift
             t,Sout,stats,erro_info=boxlib.ode3_rk45(llg_fun, self.tspan, ini, options=odeset)
