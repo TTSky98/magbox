@@ -4,18 +4,23 @@ from . import boxlib
 from .initial import Lattice
 
 class spin3:
-    def __init__(self, x, y, z, lattice_type: Lattice,dtype="f32", device="gpu",thread:int=4):
+    def __init__(self, x, y, z, lattice_type: Lattice,dtype="f32", device="gpu",thread:int=4, require_ini_grad:bool=False):
         torch.set_num_threads(thread)
 
         dtype=boxlib.get_data_type(dtype)
         self.dtype=dtype
         self.device=boxlib.get_device(device)
+        self.require_ini_grad=require_ini_grad
 
         self.x = torch.as_tensor(x,dtype=self.dtype,device=self.device)
         self.y = torch.as_tensor(y,dtype=self.dtype,device=self.device)
         self.z = torch.as_tensor(z,dtype=self.dtype,device=self.device)
 
-
+        if self.require_ini_grad:
+            self.x.requires_grad_(True)
+            self.y.requires_grad_(True)
+            self.z.requires_grad_(True)
+        
         self.x=self.x.view(-1,1)
         self.y=self.y.view(-1,1)
         self.z=self.z.view(-1,1)
