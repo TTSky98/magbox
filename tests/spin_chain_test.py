@@ -25,7 +25,7 @@ def plot_fun(t,x,y,ft_abs,q,w,dispersion,dispersion_theory,err,mean_err,max_err)
             origin='lower',
             extent=(q[0],q[-1],w[0],w[-1]),
     )
-    plt.ylim(0,1.5*w_max)
+    plt.ylim(0,2*w_max)
 
     plt.subplot(2,2,2)
     plt.scatter(q,dispersion,label="Simulation")
@@ -38,8 +38,8 @@ def plot_fun(t,x,y,ft_abs,q,w,dispersion,dispersion_theory,err,mean_err,max_err)
     plt.title(f"mean error: {mean_err:.2e}, max err: {max_err:.2e}")
 
     plt.subplot(2,2,4)
-    plt.plot(t,x[0,:],label="x")
-    plt.plot(t,y[0,:],label="y")
+    plt.plot(t,x[:,0],label="x")
+    plt.plot(t,y[:,0],label="y")
     plt.legend()
     # plt.title(f"mean error: {mean_err:.2e}, max err: {max_err:.2e}")
     plt.show()
@@ -72,7 +72,7 @@ def test_spin_chain(N,K,J,K_hard):
     w_max=dispersion_theory.max()
     W_diff=np.min(np.abs(np.diff(dispersion_theory)))
     print(f"freq max: {w_max:.3e}, freq diff: {W_diff:.3e}")
-    dt=np.max([2*np.pi/(3*w_max),0.05])
+    dt=np.max([2*np.pi/(4*w_max),0.05])
     T=np.min([int(3*2*np.pi/W_diff),2e4])
     print(f"use dt: {dt:.3e}, Total Time: {T:.3e}")
 
@@ -82,12 +82,18 @@ def test_spin_chain(N,K,J,K_hard):
     t_tc,S,stats,err_info=sf.run(spin)
     t=t_tc.cpu().detach().numpy()
 
-    x=S[::3].detach().cpu().numpy()
-    y=S[1::3].detach().cpu().numpy()
-    z=S[2::3].detach().cpu().numpy()
+    S=S.reshape(len(t),N,3)
+
+    x=S[...,0].detach().cpu().numpy().squeeze()
+    y=S[...,1].detach().cpu().numpy().squeeze()
+    z=S[...,2].detach().cpu().numpy().squeeze()
+
+    # x=S[:,::3,:].detach().cpu().numpy().squeeze()
+    # y=S[:,1::3,:].detach().cpu().numpy().squeeze()
+    # z=S[:,2::3,:].detach().cpu().numpy().squeeze()
 
     u=x+1j*y
-    ft=np.fft.fft2(u)
+    ft=np.fft.fft2(u.T)
     ft_abs=np.abs(ft)
     w=np.fft.fftfreq(len(t), dt)*2*np.pi
     
@@ -113,7 +119,7 @@ def test_spin_chain(N,K,J,K_hard):
     assert mean_err<1e-2
 
 if __name__=="__main__":
-    test_spin_chain(256,1,1,10)
+    test_spin_chain(32,1,1,0)
 
 
 # spin_chain_test(256,1,0.5,1,50)

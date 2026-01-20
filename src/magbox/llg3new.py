@@ -32,7 +32,7 @@ class llg3new:
         self.thermal_strength=torch.sqrt(2*self.alpha*self.Temp/self.gamma)
 
     def llg_drift(self,t, S):
-        x,y,z=spin3.get_xyz(S)
+        x,y,z=spin3.get_xyz(S.view(-1,1))
         h3=self.h_fun.all3(t,x,y,z).view(-1,3)
         M1=torch.linalg.cross(S,h3,dim=1)
         M2=torch.linalg.cross(S,M1,dim=1)
@@ -40,7 +40,7 @@ class llg3new:
         return self.prefactor*drift_core
     
     def llg_thermal_no_correction(self, t, S):
-        x,y,z=spin3.get_xyz(S)
+        x,y,z=spin3.get_xyz(S.view(-1,1))
         h3=self.h_fun.all3(t,x,y,z).view(-1,3) 
         M1=torch.linalg.cross(S,h3,dim=1)
         M2=torch.linalg.cross(S,M1,dim=1)
@@ -74,11 +74,11 @@ class llg3new:
         else:
             atol=self.atol
         odeset={"rel_tol":rtol,"abs_tol":atol}
-        ini=sp.S
+        ini=sp.cart_S
         if self.Temp==0:
             llg_fun=self.llg_drift
-            t,Sout,stats,erro_info=boxlib.ode3_rk45_new(llg_fun, self.tspan, ini, options=odeset)
+            t,Sout,stats,erro_info=boxlib.ode3_rk45(llg_fun, self.tspan, ini, options=odeset)
         else:
             llg_fun=self.llg_thermal_no_correction
-            t,Sout,stats,erro_info=boxlib.ode3_sde_em_new(llg_fun, self.tspan,ini, options=odeset)
+            t,Sout,stats,erro_info=boxlib.ode3_sde_em(llg_fun, self.tspan,ini, options=odeset)
         return t,Sout,stats,erro_info
