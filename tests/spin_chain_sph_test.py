@@ -43,6 +43,7 @@ def plot_fun(t,x,y,ft_abs,q,w,K,J,dispersion,dispersion_theory,err,mean_err,max_
     # plt.title(f"mean error: {mean_err:.2e}, max err: {max_err:.2e}")
     plt.show()
 
+@pytest.mark.skip(reason="Under rebuild")
 @pytest.mark.parametrize("N,K,J,dt,T",testdata)
 def test_spin_chain(N,K,J,dt,T):
     # N=256

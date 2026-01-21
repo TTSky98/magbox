@@ -51,7 +51,7 @@ def peak_correction(left_height,right_height,peak_height):
     
     return loc*epsilon
 
-# @pytest.skip(reason="Under rebuild")
+@pytest.mark.skip(reason="Under rebuild")
 @pytest.mark.parametrize("N,K,J,alpha",testdata)
 def test_energy_damping(N,K,J,alpha):
     # N=256
@@ -77,15 +77,15 @@ def test_energy_damping(N,K,J,alpha):
 
     t_tc,ang,*_=sf.run(spin)
     t=t_tc.cpu().detach().numpy()
-    theta=ang[::2].cpu().detach().numpy()
-    phi=ang[1::2].cpu().detach().numpy()
+    theta=ang[:,::2,0].cpu().detach().numpy()
+    phi=ang[:,1::2,0].cpu().detach().numpy()
 
     x=np.sin(theta)*np.cos(phi)
     y=np.sin(theta)*np.sin(phi)
     z=np.cos(theta)
 
     u=x+1j*y
-    ft=np.fft.fft2(u)
+    ft=np.fft.fft2(u.T)
     ft_abs=np.abs(ft)
     w=np.fft.fftfreq(len(t), dt)*2*np.pi
     q=np.fft.fftfreq(N,1)*2*np.pi

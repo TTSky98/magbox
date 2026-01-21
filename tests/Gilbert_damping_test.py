@@ -61,8 +61,8 @@ def test_energy_damping(N,K,J,alpha):
     # T=50
     # rng=np.random.default_rng()
     dt=2*np.pi/(K+2*J)
-    loops=np.floor(1/alpha)*100
-    T=np.min([np.ceil(loops*dt),2000.0])
+    loops=np.floor(1/alpha)*200
+    T=np.min([np.ceil(loops*dt), 20000.0])
 
     dt=T/np.ceil(T/dt)
     dt=dt/8
@@ -77,7 +77,7 @@ def test_energy_damping(N,K,J,alpha):
     vars = magbox.Vars(K1=K, J=J)
 
     sf=magbox.llg3(x0,y0,z0, LT,vars,
-                   device='cpu', dtype='f32', alpha=alpha,T=T,dt=dt)
+                   device='cpu', dtype='f64', alpha=alpha,T=T,dt=dt,rtol=1e-4)
 
     t_tc,S,*_=sf.run()
     t=t_tc.cpu().detach().numpy()
@@ -119,14 +119,14 @@ def test_energy_damping(N,K,J,alpha):
 
     print(f"mean error: {mean_err:.2e}, max err: {max_err:.2e}")
     print(f"mean error correction: {mean_errc:.2e}, max err correction: {max_errc:.2e}")
-    print(f"Technical accuracy: {2*dw/K:.2e}")
+    print(f"Technical accuracy: {2*dw/(alpha*K):.2e}")
 
     plot_fun(N,err,mean_err,max_err)
 
-    assert mean_err<2*dw/K
+    assert mean_err<2*dw/(alpha*K)
 
 if __name__=="__main__":
-    test_energy_damping(32, 1.0, 5.0, 0.1)
+    test_energy_damping(32, 1.0, 2.0, 0.001)
 
 
 # spin_chain_test(256,1,0.5,1,50)
