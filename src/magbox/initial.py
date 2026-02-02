@@ -18,6 +18,6 @@ class Vars:
     K1_dir: list[float] = field(default_factory=lambda: [0.0, 0.0, 1.0])
     K1: float = field(default_factory=lambda: 1.0)
     D: float = field(default_factory=lambda: 0.0)
-    custom_heff: Optional[Callable[[object, object], torch.Tensor]] = field(default_factory=lambda: None)
+    custom_heff: Optional[Callable[[object, object, object], torch.Tensor]] = field(default_factory=lambda: None)
     custom_kernel: tuple =field(default_factory=lambda: (1,1))
     require_vars_grad: bool = field(default_factory=lambda: False)

@@ -97,7 +97,8 @@ class heff3:
             dummy_cartS = torch.ones((self.num,3), dtype=self.data_type, device=self.device)
             dummy_cartS = torch.nn.functional.normalize(dummy_cartS, dim=1,p=2)
             try:
-                custom_out = self.custom_field_fn(self.custom_kernel, dummy_cartS) # type: ignore[arg-type]
+                t=torch.tensor(0.0,dtype=self.data_type,device=self.device)
+                custom_out = self.custom_field_fn(self.custom_kernel, t, dummy_cartS)
             except Exception as exc:
                 raise ValueError("custom_heff raised an exception during shape validation") from exc
 
@@ -156,11 +157,11 @@ class heff3:
         # calculate DM field
         return torch.zeros((self.num,3), dtype=self.data_type, device=self.device)
 
-    def custom3(self, cartS: torch.Tensor) -> torch.Tensor:
+    def custom3(self,t, cartS: torch.Tensor) -> torch.Tensor:
         # user provided effective field
         if self.custom_field_fn is None:
             raise RuntimeError("custom_heff is not set; call `custom3` only when `vars.custom_heff` is provided")
-        return self.custom_field_fn(self.custom_kernel, cartS)
+        return self.custom_field_fn(self.custom_kernel, t, cartS)
 
     def all3(self, t: float, x: torch.Tensor, y: torch.Tensor, z: torch.Tensor) -> torch.Tensor:
         cartS=self.get_cart_S(x,y,z)
@@ -172,7 +173,7 @@ class heff3:
         if self.has_K1:
             h0.add_(self.uni_anisotropy3(cartS))
         if self.has_custom:
-            h0.add_(self.custom3(cartS))
+            h0.add_(self.custom3(t, cartS))
 
         return h0.reshape(-1,1)
     
