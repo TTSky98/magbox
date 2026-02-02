@@ -9,7 +9,7 @@ from typing import Union, Tuple
 class llg3:
     def __init__(self,x,y,z, lattice_type:Lattice,vars:Vars=Vars(),
                  dtype="f32", device="gpu", thread:int=4, require_ini_grad:bool=False,
-                 gamma=1, alpha=0.01, Temp=0., dt=0.1, T=50, rtol:Union[float,None]=None, atol:Union[float,None]=None):
+                 gamma=1., alpha=0.01, Temp=0., dt=0.1, T=50, rtol:Union[float,None]=None, atol:Union[float,None]=None):
         warnings.filterwarnings("ignore", message="Sparse CSR tensor support is in beta state")
         sp = spin3(x,y,z,lattice_type,dtype=dtype, device=device, thread=thread, require_ini_grad=require_ini_grad)
         self.spin = sp
