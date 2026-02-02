@@ -55,7 +55,7 @@ class heff3:
                     processed_kernel.append(t)
                 else:
                     t = torch.as_tensor(item, device=self.device,dtype=self.data_type)
-                    if t.numel() > 0:
+                    if t.numel() > 100:
                         sparsity = 1.0 - (float(t.count_nonzero()) / t.numel())
                         if sparsity >= 0.5:
                             t = t.to_sparse()
