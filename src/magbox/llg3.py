@@ -62,7 +62,7 @@ class llg3:
         return f-correction, g, dim
     def Stratonovich_correction(self,S):
         return self.prefactor*self.alpha*self.Temp*S
-    def run(self,ini=None)-> Tuple[torch.Tensor,torch.Tensor,dict, dict]:
+    def run(self,ini=None, waitbar:bool=True)-> Tuple[torch.Tensor,torch.Tensor,dict, dict]:
         # error control
         if ini is None:
             ini=self.spin.cart_S
@@ -81,7 +81,7 @@ class llg3:
                 atol=max(self.alpha.item()*1e-2,1e-3)
         else:
             atol=self.atol
-        odeset={"rel_tol":rtol,"abs_tol":atol}
+        odeset={"rel_tol":rtol,"abs_tol":atol, "waitbar":waitbar}
         
         if self.Temp==0:
             llg_fun=self.llg_drift
