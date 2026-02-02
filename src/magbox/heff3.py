@@ -87,6 +87,9 @@ class heff3:
             self.has_J = any(bool(v) for v in J)
              
         self.has_B = bool(torch.norm(self.B).item())
+        if self.has_B:
+            self.B_expanded = self.B.expand(self.num, 3)
+            
         self.has_K1 = bool(torch.norm(self.K1).item())
         self.has_custom = self.custom_field_fn is not None
 
@@ -132,7 +135,7 @@ class heff3:
 
         return E_total
     def zeeman3(self) -> torch.Tensor:
-        return self.B*torch.ones((self.num,3),dtype=self.data_type,device=self.device)
+        return self.B_expanded
     # def zeeman2(self,ctheta,stheta,cphi,sphi):
     #     h_theta=self.B_dir@torch.cat([])
     # return self.B*torch.cat([*],1)
@@ -161,17 +164,16 @@ class heff3:
 
     def all3(self, t: float, x: torch.Tensor, y: torch.Tensor, z: torch.Tensor) -> torch.Tensor:
         cartS=self.get_cart_S(x,y,z)
-        h_parts=[]
+        h0 = torch.zeros((self.num,3), dtype=self.data_type, device=self.device)
         if self.has_B:
-            h_parts.append(self.zeeman3())
+            h0.add_(self.zeeman3())
         if self.has_J:
-            h_parts.append(self.exchange3(cartS))
+            h0.add_(self.exchange3(cartS))
         if self.has_K1:
-            h_parts.append(self.uni_anisotropy3(cartS))
+            h0.add_(self.uni_anisotropy3(cartS))
         if self.has_custom:
-            h_parts.append(self.custom3(cartS))
+            h0.add_(self.custom3(cartS))
 
-        h0 = torch.zeros((self.num,3), dtype=self.data_type, device=self.device) if not h_parts else torch.stack(h_parts).sum(dim=0)
         return h0.reshape(-1,1)
     
     @staticmethod
