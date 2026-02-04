@@ -59,7 +59,7 @@ def test_spin_chain(N,K,J,K_hard):
     y=np.sin(theta0)*np.sin(phi0)
     # phi0=10*np.arange(N)/N *2*np.pi
     hard_kernel = K_hard * np.array([[0,0,0],[0,1,0],[0,0,0]])
-    def hard_axis_heff(kernel, cartS):
+    def hard_axis_heff(kernel,t, cartS):
         return -cartS @ kernel[0]
     LT = magbox.Lattice(type="square", size=[N], periodic=True)
     vars = magbox.Vars(K1=K, J=J, custom_kernel=(hard_kernel,), custom_heff=hard_axis_heff)
