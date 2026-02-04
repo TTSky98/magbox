@@ -625,7 +625,8 @@ class sde_solver(eq_solver):
 
             # Output processing using ntrp
             n_out_new, t_out_new, y_out_new, next_idx = self._get_outputs(output_pos, self._interp_fun, t, S, refine, t_new, y_new, y, h, y_list, interp_coeff, dtype, device, n_t_span, t_span, next_idx, t_dir)
-
+            y_out_new = self._after_process(y_out_new)
+            
             if n_out_new > 0:
                 old_n_out = n_out
                 n_out = n_out + n_out_new

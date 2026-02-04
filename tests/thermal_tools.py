@@ -15,7 +15,9 @@ def run_thermal(dt: float = 0.1,
                 device: str = "cpu",
                 dtype: str = 'f32',
                 seed = None,
-                spin_num: int = 2**8):
+                spin_num: int = 2**8,
+                rtol: float = 1e-2,
+                atol: float = 1e-4) -> Path:
     """
     运行一次 LLG 热模拟，把结果保存到 <out_dir>/thermal_test_<run_id>.npz
     文件中额外存下所有输入参数，方便后期读取。
@@ -36,8 +38,7 @@ def run_thermal(dt: float = 0.1,
     z0=np.cos(theta0)
 
     sf = llg3(x0,y0,z0, lt, vars=vars, device=device, dtype=dtype,
-              dt=dt, alpha=alpha, T = T, Temp=Temp, gamma=gamma, rtol=1e-1)  # type: ignore
-
+              dt=dt, alpha=alpha, T = T, Temp=Temp, gamma=gamma, rtol=rtol, atol=atol) 
     t, S, stats, erro_info = sf.run()
     S=S.reshape(len(t), N1, 3)
     z=S[..., 2].detach().cpu().numpy()
@@ -57,7 +58,12 @@ def run_thermal(dt: float = 0.1,
              T=T,)
     print(f"[run_thermal] 数据已保存 -> {save_file}")
     return save_file
+def density(e):
+    eps=np.finfo(float).eps
+    e=np.clip(e, eps, 0.5-eps)
 
+    se=np.sqrt(1-2*e)
+    return -se
 
 # ==========  2. 读取并画图  ==========
 def plot_thermal(npz_file:  Path,
@@ -92,18 +98,19 @@ def plot_thermal(npz_file:  Path,
     hist, bin_edges = np.histogram(en_st, bins=bins)
     bin_centers = 0.5 * (bin_edges[:-1] + bin_edges[1:])
     # 态密度
-    dens=np.sqrt(2*bin_centers*(1-2*bin_centers))
-    # loghist=np.log(hist)
+    ds=density(bin_edges)
+    dens=ds[1:]-ds[:-1]
+    dens/=np.diff(bin_edges).mean()
+
     loghist=np.log((hist+1)/dens)
 
     # 拟合
     if fit_counts is None:
-        k, b = np.polyfit(bin_centers, loghist, deg=1)
-        x_smooth = np.linspace(bin_centers.min(), bin_centers.max(), 200)
-    else:
-        # fit_counts = min(fit_counts, len(bin_centers))
-        k,b = np.polyfit(bin_centers[:fit_counts], loghist[:fit_counts], deg=1)
-        x_smooth = np.linspace(bin_centers[:fit_counts].min(), bin_centers[:fit_counts].max(), 200)
+        fit_counts = len(bin_centers)
+    # (k,b), cov = np.polyfit(bin_centers[:fit_counts], loghist[:fit_counts], deg=1,cov=True)
+    (k,b), cov = np.polyfit(bin_centers[:fit_counts], loghist[:fit_counts], deg=1,cov=True, w= np.sqrt(hist[:fit_counts]+1))
+    x_smooth = np.linspace(bin_centers[:fit_counts].min(), bin_centers[:fit_counts].max(), 200)
+    k_err, b_err=np.sqrt(np.diag(cov))
     y_smooth = k * x_smooth + b
 
     # 画图
@@ -121,7 +128,7 @@ def plot_thermal(npz_file:  Path,
                    s=60, facecolors='none', edgecolors='dodgerblue', lw=1.2,
                    alpha=0.85, label='Energy counts')
     axs[1].plot(x_smooth, y_smooth, color='red',
-                label=f'Fit y={k:.2f}x+{b:.2f}')
+                label=f'Fit y=({k:.2f}±{k_err:.2f})x+({b:.2f}±{b_err:.2f})')
     axs[1].set_xlabel("Energy")
     axs[1].set_ylabel("Counts")
     axs[1].set_title(f"Energy Histogram "

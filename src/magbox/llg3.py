@@ -9,7 +9,7 @@ from typing import Union, Tuple
 class llg3:
     def __init__(self,x,y,z, lattice_type:Lattice,vars:Vars=Vars(),
                  dtype="f32", device="gpu", thread:int=4, require_ini_grad:bool=False,
-                 gamma=1., alpha=0.01, Temp=0., dt=0.1, T=50, rtol:Union[float,None]=None, atol:Union[float,None]=None):
+                 gamma=1., alpha=0.01, Temp=0., dt=0.1, T=50., rtol:Union[float,None]=None, atol:Union[float,None]=None):
         warnings.filterwarnings("ignore", message="Sparse CSR tensor support is in beta state")
         sp = spin3(x,y,z,lattice_type,dtype=dtype, device=device, thread=thread, require_ini_grad=require_ini_grad)
         self.spin = sp
@@ -61,7 +61,7 @@ class llg3:
         correction = self.Stratonovich_correction(S) 
         return f-correction, g, dim
     def Stratonovich_correction(self,S):
-        return self.prefactor*self.alpha*self.Temp*S
+        return 2*self.prefactor*self.alpha*self.Temp*S
     def run(self,ini=None, waitbar:bool=True)-> Tuple[torch.Tensor,torch.Tensor,dict, dict]:
         # error control
         if ini is None:
@@ -87,6 +87,6 @@ class llg3:
             llg_fun=self.llg_drift
             t,Sout,stats,erro_info=boxlib.ode3_rk45(llg_fun, self.tspan, ini, options=odeset)
         else:
-            llg_fun=self.llg_thermal_no_correction
+            llg_fun=self.llg_thermal
             t,Sout,stats,erro_info=boxlib.ode3_sde_em(llg_fun, self.tspan,ini, options=odeset)
         return t,Sout,stats,erro_info
