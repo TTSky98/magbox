@@ -484,6 +484,7 @@ class eq3_solver(eq_solver):
 class sde_solver(eq_solver):
     # Performance optimization constants
     GROWTH_MULTIPLIER = 1.5  # Growth factor for dynamic array allocation
+    GROWTH_INCREMENT = GROWTH_MULTIPLIER - 1.0  # Additional space when growing (0.5 = 50%)
     MAX_STEPS_CAP = 1000000  # Maximum pre-allocated steps to prevent memory exhaustion
     DEFAULT_STEPS_ESTIMATE = 1000  # Default step estimate when calculation not possible
     
@@ -561,10 +562,12 @@ class sde_solver(eq_solver):
 
         # OPTIMIZATION: Pre-allocate error history as tensor for better performance
         # Using tensor instead of Python list avoids frequent reallocation during append operations
-        # Cap at MAX_STEPS_CAP to prevent memory exhaustion with very small h_min
+        # Clamp estimate between DEFAULT_STEPS_ESTIMATE and MAX_STEPS_CAP
         if h_min > 0:
+            # Estimate steps needed, clamped to safe range
+            steps_from_h = int(torch.abs(t_final - t0) / h_min)
             max_steps_estimate = max(self.DEFAULT_STEPS_ESTIMATE, 
-                                    min(self.MAX_STEPS_CAP, int(torch.abs(t_final - t0) / h_min)))
+                                    min(self.MAX_STEPS_CAP, steps_from_h))
         else:
             # h_min should always be positive; if not, use default estimate
             # This case should not normally occur due to initialization in _ode_initial
@@ -671,7 +674,8 @@ class sde_solver(eq_solver):
                 # OPTIMIZATION: Use GROWTH_MULTIPLIER strategy to reduce reallocations
                 # This provides amortized O(n) complexity instead of O(n²)
                 if n_out + 1 > t_out.shape[0]:
-                    growth_amount = int(t_out.shape[0] * (self.GROWTH_MULTIPLIER - 1.0))
+                    # Calculate growth amount using pre-computed increment
+                    growth_amount = int(t_out.shape[0] * self.GROWTH_INCREMENT)
                     extra = max(chunk, n_out_new, growth_amount)
                     t_out_new_temp = torch.zeros(t_out.shape[0] + extra, dtype=dtype, device=device)
                     t_out_new_temp[:t_out.shape[0]] = t_out
