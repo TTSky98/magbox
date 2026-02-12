@@ -546,7 +546,10 @@ class sde_solver(eq_solver):
         t_out[n_out] = t
         y_out[n_out, ...] = y
 
-        error_history = []
+        # Pre-allocate error history as tensor for better performance
+        max_steps_estimate = max(1000, int(torch.abs(t_final - t0) / h_min) if h_min > 0 else 1000)
+        error_history = torch.zeros(max_steps_estimate, dtype=dtype, device=device)
+        error_idx = 0
         n_calls = 0
         n_steps = 0
         
@@ -606,7 +609,15 @@ class sde_solver(eq_solver):
                     n_failures = 0
                 
                 if accept_step:
-                    error_history.append(err)
+                    # Store error in pre-allocated tensor
+                    if error_idx >= error_history.shape[0]:
+                        # Expand if needed (rare case)
+                        new_size = error_history.shape[0] * 2
+                        error_history_new = torch.zeros(new_size, dtype=dtype, device=device)
+                        error_history_new[:error_idx] = error_history
+                        error_history = error_history_new
+                    error_history[error_idx] = err
+                    error_idx += 1
                     break
                 else:
                     if no_failed:
@@ -632,7 +643,8 @@ class sde_solver(eq_solver):
                 n_out = n_out + n_out_new
                 
                 if n_out + 1 > t_out.shape[0]:
-                    extra = max(chunk, n_out_new)
+                    # Use 1.5x growth strategy for better amortized performance
+                    extra = max(chunk, n_out_new, int(t_out.shape[0] * 0.5))
                     t_out_new_temp = torch.zeros(t_out.shape[0] + extra, dtype=dtype, device=device)
                     t_out_new_temp[:t_out.shape[0]] = t_out
                     t_out = t_out_new_temp
@@ -659,13 +671,16 @@ class sde_solver(eq_solver):
         t_out = t_out[:n_out+1]
         y_out = y_out[:n_out+1, ...]
 
+        # Trim error_history to actual size
+        error_history = error_history[:error_idx]
+        
         stats = {'n_calls': n_calls,
              'n_steps': n_steps,
              'n_output': n_out+1,
              'intergration': not integration_failed}
         err_info = {
-            'err_history': error_history,
-            'max_step_error': max(error_history) if error_history else 0.0
+            'err_history': error_history.cpu().tolist(),  # Convert to list for compatibility
+            'max_step_error': error_history.max().item() if error_idx > 0 else 0.0
         }
         return t_out, y_out, stats, err_info
 
