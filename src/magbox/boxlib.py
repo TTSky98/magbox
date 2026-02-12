@@ -557,7 +557,10 @@ class sde_solver(eq_solver):
         # OPTIMIZATION: Pre-allocate error history as tensor for better performance
         # Using tensor instead of Python list avoids frequent reallocation during append operations
         # Cap at 1M steps to prevent memory exhaustion with very small h_min
-        max_steps_estimate = max(1000, min(1000000, int(torch.abs(t_final - t0) / h_min) if h_min > 0 else 1000))
+        if h_min > 0:
+            max_steps_estimate = max(1000, min(1000000, int(torch.abs(t_final - t0) / h_min)))
+        else:
+            max_steps_estimate = 1000
         error_history = torch.zeros(max_steps_estimate, dtype=dtype, device=device)
         error_idx = 0
         n_calls = 0
@@ -694,8 +697,12 @@ class sde_solver(eq_solver):
              'n_steps': n_steps,
              'n_output': n_out+1,
              'integration': not integration_failed}
+        
+        # Convert error_history to list for backward compatibility and ease of use
+        # This happens only once at the end, so performance impact is minimal
+        # For large problems (>100k steps), consider keeping as tensor by modifying this line
         err_info = {
-            'err_history': error_history.cpu().tolist(),  # Convert to list for compatibility
+            'err_history': error_history.cpu().tolist(),
             'max_step_error': error_history.max().item() if error_idx > 0 else 0.0
         }
         return t_out, y_out, stats, err_info
