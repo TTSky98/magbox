@@ -558,6 +558,9 @@ class sde_solver(eq_solver):
 
         f1, g1, noise_dim = sde_fcn(t, y)
         n_calls += 1
+        
+        # Pre-allocate random noise tensor for better performance
+        W = torch.empty((order,) + noise_dim, dtype=dtype, device=device)
 
         finished = False
         next_idx = 1
@@ -574,7 +577,8 @@ class sde_solver(eq_solver):
             
             no_failed = True
 
-            W=torch.randn((order,)+noise_dim,dtype=dtype,device=device)
+            # Generate random noise in-place for better performance
+            W.normal_()
 
             while True:
                 t_new, y_list, f_list, gw_list = self._one_step(f1, g1, t, y, h, W, sde_fcn, order)
