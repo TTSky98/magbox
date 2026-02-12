@@ -470,7 +470,7 @@ class eq_solver:
         stats = {'n_calls': n_calls,
             'n_steps': n_steps,
             'n_output': n_out+1,
-            'intergration': not integration_failed}
+            'integration': not integration_failed}
         err_info = {
             'err_history': err_history,
             'max_step_error': max(err_history) if err_history else 0.0
@@ -536,6 +536,14 @@ class sde_solver(eq_solver):
         return y_interp
     
     def run(self, bar: Wait_bar):
+        """
+        Run the SDE solver with performance optimizations.
+        
+        Key optimizations:
+        1. Pre-allocate error_history as a tensor instead of Python list (reduces append overhead)
+        2. Use 1.5x growth strategy for output arrays (reduces O(n²) to amortized O(n))
+        3. Pre-allocate and reuse random noise tensor W (reduces memory allocations)
+        """
         t_out, y_out, t, y, dtype, device, h_max, h_min, rtol, atol, max_failures, t_final, t0, t_dir, t_span, waitbar, alpha, beta, c_error, sde_fcn, S, chunk, output_pos, n_t_span, n_eq, refine, order, interp_coeff = self._get_parameters()
         if hasattr(self, 'adaptive_order'):
             adaptive_order = self.adaptive_order
@@ -546,8 +554,10 @@ class sde_solver(eq_solver):
         t_out[n_out] = t
         y_out[n_out, ...] = y
 
-        # Pre-allocate error history as tensor for better performance
-        max_steps_estimate = max(1000, int(torch.abs(t_final - t0) / h_min) if h_min > 0 else 1000)
+        # OPTIMIZATION: Pre-allocate error history as tensor for better performance
+        # Using tensor instead of Python list avoids frequent reallocation during append operations
+        # Cap at 1M steps to prevent memory exhaustion with very small h_min
+        max_steps_estimate = max(1000, min(1000000, int(torch.abs(t_final - t0) / h_min) if h_min > 0 else 1000))
         error_history = torch.zeros(max_steps_estimate, dtype=dtype, device=device)
         error_idx = 0
         n_calls = 0
@@ -559,7 +569,8 @@ class sde_solver(eq_solver):
         f1, g1, noise_dim = sde_fcn(t, y)
         n_calls += 1
         
-        # Pre-allocate random noise tensor for better performance
+        # OPTIMIZATION: Pre-allocate random noise tensor and reuse it
+        # Using .normal_() to fill in-place avoids repeated allocations in the main loop
         W = torch.empty((order,) + noise_dim, dtype=dtype, device=device)
 
         finished = False
@@ -577,7 +588,7 @@ class sde_solver(eq_solver):
             
             no_failed = True
 
-            # Generate random noise in-place for better performance
+            # Generate random noise in-place (reuses pre-allocated tensor)
             W.normal_()
 
             while True:
@@ -615,8 +626,8 @@ class sde_solver(eq_solver):
                 if accept_step:
                     # Store error in pre-allocated tensor
                     if error_idx >= error_history.shape[0]:
-                        # Expand if needed (rare case)
-                        new_size = error_history.shape[0] * 2
+                        # Expand if needed (rare case) - use 1.5x growth for consistency
+                        new_size = int(error_history.shape[0] * 1.5)
                         error_history_new = torch.zeros(new_size, dtype=dtype, device=device)
                         error_history_new[:error_idx] = error_history
                         error_history = error_history_new
@@ -646,8 +657,9 @@ class sde_solver(eq_solver):
                 old_n_out = n_out
                 n_out = n_out + n_out_new
                 
+                # OPTIMIZATION: Use 1.5x growth strategy to reduce reallocations
+                # This provides amortized O(n) complexity instead of O(n²)
                 if n_out + 1 > t_out.shape[0]:
-                    # Use 1.5x growth strategy for better amortized performance
                     extra = max(chunk, n_out_new, int(t_out.shape[0] * 0.5))
                     t_out_new_temp = torch.zeros(t_out.shape[0] + extra, dtype=dtype, device=device)
                     t_out_new_temp[:t_out.shape[0]] = t_out
@@ -681,7 +693,7 @@ class sde_solver(eq_solver):
         stats = {'n_calls': n_calls,
              'n_steps': n_steps,
              'n_output': n_out+1,
-             'intergration': not integration_failed}
+             'integration': not integration_failed}
         err_info = {
             'err_history': error_history.cpu().tolist(),  # Convert to list for compatibility
             'max_step_error': error_history.max().item() if error_idx > 0 else 0.0
