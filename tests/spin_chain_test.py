@@ -13,7 +13,7 @@ testdata = [ # N, K, J, K_hard
 ]
 
 def plot_fun(t,x,y,ft_abs,q,w,dispersion,dispersion_theory,err,mean_err,max_err):
-    if "PYTEST_CURRENT_TEST" in os.environ:
+    if "PYTEST_CURRENT_TEST" in os.environ: 
         print("测试模式不作图")
         return
     import matplotlib.pyplot as plt

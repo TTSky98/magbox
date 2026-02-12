@@ -87,6 +87,6 @@ class llg3:
             llg_fun=self.llg_drift
             t,Sout,stats,erro_info=boxlib.ode3_rk45(llg_fun, self.tspan, ini, options=odeset)
         else:
-            llg_fun=self.llg_thermal
+            llg_fun=self.llg_thermal_no_correction
             t,Sout,stats,erro_info=boxlib.ode3_sde_em(llg_fun, self.tspan,ini, options=odeset)
         return t,Sout,stats,erro_info
