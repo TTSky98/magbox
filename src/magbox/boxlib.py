@@ -482,6 +482,11 @@ class eq3_solver(eq_solver):
         return _vec_normaliza(y)
 
 class sde_solver(eq_solver):
+    # Performance optimization constants
+    GROWTH_MULTIPLIER = 1.5  # Growth factor for dynamic array allocation
+    MAX_STEPS_CAP = 1000000  # Maximum pre-allocated steps to prevent memory exhaustion
+    DEFAULT_STEPS_ESTIMATE = 1000  # Default step estimate when calculation not possible
+    
     def _tableau(self, solver_name):
         device=self.device
         dtype=self.dtype
@@ -556,11 +561,14 @@ class sde_solver(eq_solver):
 
         # OPTIMIZATION: Pre-allocate error history as tensor for better performance
         # Using tensor instead of Python list avoids frequent reallocation during append operations
-        # Cap at 1M steps to prevent memory exhaustion with very small h_min
+        # Cap at MAX_STEPS_CAP to prevent memory exhaustion with very small h_min
         if h_min > 0:
-            max_steps_estimate = max(1000, min(1000000, int(torch.abs(t_final - t0) / h_min)))
+            max_steps_estimate = max(self.DEFAULT_STEPS_ESTIMATE, 
+                                    min(self.MAX_STEPS_CAP, int(torch.abs(t_final - t0) / h_min)))
         else:
-            max_steps_estimate = 1000
+            # h_min should always be positive; if not, use default estimate
+            # This case should not normally occur due to initialization in _ode_initial
+            max_steps_estimate = self.DEFAULT_STEPS_ESTIMATE
         error_history = torch.zeros(max_steps_estimate, dtype=dtype, device=device)
         error_idx = 0
         n_calls = 0
@@ -629,8 +637,8 @@ class sde_solver(eq_solver):
                 if accept_step:
                     # Store error in pre-allocated tensor
                     if error_idx >= error_history.shape[0]:
-                        # Expand if needed (rare case) - use 1.5x growth for consistency
-                        new_size = int(error_history.shape[0] * 1.5)
+                        # Expand if needed (rare case) - use GROWTH_MULTIPLIER for consistency
+                        new_size = int(error_history.shape[0] * self.GROWTH_MULTIPLIER)
                         error_history_new = torch.zeros(new_size, dtype=dtype, device=device)
                         error_history_new[:error_idx] = error_history
                         error_history = error_history_new
@@ -660,10 +668,11 @@ class sde_solver(eq_solver):
                 old_n_out = n_out
                 n_out = n_out + n_out_new
                 
-                # OPTIMIZATION: Use 1.5x growth strategy to reduce reallocations
+                # OPTIMIZATION: Use GROWTH_MULTIPLIER strategy to reduce reallocations
                 # This provides amortized O(n) complexity instead of O(n²)
                 if n_out + 1 > t_out.shape[0]:
-                    extra = max(chunk, n_out_new, int(t_out.shape[0] * 0.5))
+                    growth_amount = int(t_out.shape[0] * (self.GROWTH_MULTIPLIER - 1.0))
+                    extra = max(chunk, n_out_new, growth_amount)
                     t_out_new_temp = torch.zeros(t_out.shape[0] + extra, dtype=dtype, device=device)
                     t_out_new_temp[:t_out.shape[0]] = t_out
                     t_out = t_out_new_temp
