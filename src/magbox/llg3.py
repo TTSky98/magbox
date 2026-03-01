@@ -9,13 +9,16 @@ from typing import Union, Tuple
 class llg3:
     def __init__(self,x,y,z, lattice_type:Lattice,vars:Vars=Vars(),
                  dtype="f32", device="gpu", thread:int=4, require_ini_grad:bool=False,
-                 gamma=1., alpha=0.01, Temp=0., dt=0.1, T=50., rtol:Union[float,None]=None, atol:Union[float,None]=None):
+                 gamma=1., alpha=0.01, Temp=0., dt=0.1, T=50., rtol:Union[float,None]=None, atol:Union[float,None]=None,
+                 fix_step: bool = False, dh=None):
         warnings.filterwarnings("ignore", message="Sparse CSR tensor support is in beta state")
         sp = spin3(x,y,z,lattice_type,dtype=dtype, device=device, thread=thread, require_ini_grad=require_ini_grad)
         self.spin = sp
 
         self.rtol=rtol
         self.atol=atol
+        self.fix_step=fix_step
+        self.dh=dh
         dtype=sp.dtype
         device=sp.device
         self.num=sp.num
@@ -62,7 +65,7 @@ class llg3:
         return f-correction, g, dim
     def Stratonovich_correction(self,S):
         return 2*self.prefactor*self.alpha*self.Temp*S
-    def run(self,ini=None, waitbar:bool=True)-> Tuple[torch.Tensor,torch.Tensor,dict, dict]:
+    def run(self, ini=None, waitbar: bool = True) -> Tuple[torch.Tensor, torch.Tensor, dict, dict]:
         # error control
         if ini is None:
             ini=self.spin.cart_S
@@ -81,7 +84,9 @@ class llg3:
                 atol=max(self.alpha.item()*1e-2,1e-3)
         else:
             atol=self.atol
-        odeset={"rel_tol":rtol,"abs_tol":atol, "waitbar":waitbar}
+        odeset = {"rel_tol": rtol, "abs_tol": atol, "waitbar": waitbar, "fix_step": self.fix_step}
+        if self.dh is not None:
+            odeset["dh"] = self.dh
         
         if self.Temp==0:
             llg_fun=self.llg_drift

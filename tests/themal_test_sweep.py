@@ -20,7 +20,7 @@ from pathlib import Path
 #                 plot_thermal(file, start_time=40, bins=80)
 #                 print(f"Completed test id={id} with Temp={Temp}, dt={dt}, alpha={alpha}, gamma={gamma}\n")
 
-file=run_thermal(dt=0.1, alpha=0.1, Temp=1e-3, T=200, dtype='f64', device='cpu', spin_num=2**8, rtol=5e-2, atol=1e-6)
+file=run_thermal(dt=0.1, alpha=0.01, Temp=5e-2, T=200, dtype='f64', device='gpu', spin_num=2**10, rtol=5e-2, atol=1e-6, fix_step=True, dh=None)
 
 file=Path("./thermal_test_1.npz")
 plot_thermal(file, start_time=50, bins=400,fit_counts=250)

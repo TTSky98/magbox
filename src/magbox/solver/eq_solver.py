@@ -102,7 +102,7 @@ class eq_solver:
             self.c_error=torch.tensor([71/57600, 0.0, -71/16695, 71/1920, -17253/339200, 22/525, -1/40]
                 # [71 / 86400, 0, -142 / 50085, 71 / 2880, -5751 / 169600, 44 / 1575, -1 / 60],
                                       , dtype=dtype,device=device).view(-1,1)
-            self.order=torch.tensor(5, dtype=dtype,device=device)
+            self.order=5
             self.interp_coeff=torch.tensor([
                 [1, -183/64, 37/12, -145/128],
                 [0,0,0,0],
@@ -329,7 +329,7 @@ class eq_solver:
             t=t_new
             y=y_new
             y=self._after_process(y)
-            f1 = f_list_buffer[6]
+            f1 = f_list_buffer[order+1]
 
         bar.close(waitbar)
 

@@ -3,13 +3,20 @@ import numpy as np
 import os
 import pytest
 
-testdata = [ # N, K, J, K_hard
-    (256,1.0,0.5,1),
-    (512,1.0,0.5,2),
-    (1024,1.0,0.5,3),
-    (256,1.0,1.0,4),
-    (256,1.0,2.0,5),
-    (256,1.0,3.0,5),
+testdata = [ # N, K, J, K_hard, fix_step, dh
+    (256,1.0,0.5,1, True, 5e-2),
+    (512,1.0,0.5,2, True, 5e-2),
+    (1024,1.0,0.5,3, True, 5e-2),
+    (256,1.0,1.0,4, True, 5e-2),
+    (256,1.0,2.0,5, True, 5e-2),
+    (256,1.0,3.0,5, True, 5e-2),
+
+    (256,1.0,0.5,1, False, 5e-2),
+    (512,1.0,0.5,2, False, 5e-2),
+    (1024,1.0,0.5,3, False, 5e-2),
+    (256,1.0,1.0,4, False, 5e-2),
+    (256,1.0,2.0,5, False, 5e-2),
+    (256,1.0,3.0,5, False, 5e-2),
 ]
 
 def plot_fun(t,x,y,ft_abs,q,w,dispersion,dispersion_theory,err,mean_err,max_err):
@@ -44,8 +51,8 @@ def plot_fun(t,x,y,ft_abs,q,w,dispersion,dispersion_theory,err,mean_err,max_err)
     # plt.title(f"mean error: {mean_err:.2e}, max err: {max_err:.2e}")
     plt.show()
 
-@pytest.mark.parametrize("N,K,J,K_hard",testdata)
-def test_spin_chain(N,K,J,K_hard):
+@pytest.mark.parametrize("N,K,J,K_hard, fix_step, dh",testdata)
+def test_spin_chain(N,K,J,K_hard,fix_step,dh):
     # N=256
     # K=1.0
     # J=0.5
@@ -77,7 +84,7 @@ def test_spin_chain(N,K,J,K_hard):
     print(f"use dt: {dt:.3e}, Total Time: {T:.3e}")
 
     sf=magbox.llg3(x,y,z,LT,vars,
-                   device='cpu', dtype='f32', alpha=0,T=T,dt=dt)
+                   device='cpu', dtype='f32', alpha=0,T=T,dt=dt, fix_step=fix_step, dh=dh)
 
     t_tc,S,stats,err_info=sf.run()
     print(S.shape)
@@ -121,7 +128,7 @@ def test_spin_chain(N,K,J,K_hard):
     assert mean_err<1e-2
 
 if __name__=="__main__":
-    test_spin_chain(32,1,1,0)
+    test_spin_chain(32,1,1,0, True, 1e-1)
 
 
 # spin_chain_test(256,1,0.5,1,50)
