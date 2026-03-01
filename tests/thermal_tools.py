@@ -1,4 +1,5 @@
 # ==========  1. 生成数据  ==========
+from __future__ import annotations
 import numpy as np
 from pathlib import Path
 from magbox import llg3, spin3, Lattice, Vars
@@ -17,7 +18,9 @@ def run_thermal(dt: float = 0.1,
                 seed = None,
                 spin_num: int = 2**8,
                 rtol: float = 1e-2,
-                atol: float = 1e-4) -> Path:
+                atol: float = 1e-4,
+                fix_step: bool = False,
+                dh: float | None = None) -> Path:
     """
     运行一次 LLG 热模拟，把结果保存到 <out_dir>/thermal_test_<run_id>.npz
     文件中额外存下所有输入参数，方便后期读取。
@@ -38,7 +41,7 @@ def run_thermal(dt: float = 0.1,
     z0=np.cos(theta0)
 
     sf = llg3(x0,y0,z0, lt, vars=vars, device=device, dtype=dtype,
-              dt=dt, alpha=alpha, T = T, Temp=Temp, gamma=gamma, rtol=rtol, atol=atol) 
+              dt=dt, alpha=alpha, T = T, Temp=Temp, gamma=gamma, rtol=rtol, atol=atol, fix_step=fix_step, dh=dh)
     t, S, stats, erro_info = sf.run()
     S=S.reshape(len(t), N1, 3)
     z=S[..., 2].detach().cpu().numpy()

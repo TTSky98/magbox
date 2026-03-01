@@ -6,8 +6,10 @@ from .Wait_bar import Wait_bar
 from .initial import Lattice
 from .solver.sde_solver import sde_solver
 from .solver.sde3_solver import sde3_solver
+from .solver.sde3_fix_solver import sde3_fix_solver
 from .solver.eq_solver import eq_solver
 from .solver.eq3_solver import eq3_solver
+from .solver.eq3_fix_solver import eq3_fix_solver
 
 def get_data_type(type):
     if type=="f32":
@@ -245,7 +247,11 @@ def ode3_rk45(ode_fun: Callable, t_span: torch.Tensor, y0: torch.Tensor,
         Error history and max step error
     """
     solver= 'RK45'
-    sf=eq3_solver(ode_fun, t_span, y0, solver, options)               
+    fix_step = bool((options or {}).get('fix_step', False))
+    if fix_step:
+        sf = eq3_fix_solver(ode_fun, t_span, y0, solver, options)
+    else:
+        sf = eq3_solver(ode_fun, t_span, y0, solver, options)
     bar=Wait_bar(t_span, sf.waitbar)  # Initialize the progress bar
     t, ang, stats, error_info =sf.run(bar)
     return t, ang, stats, error_info
@@ -259,7 +265,11 @@ def ode_sde_em(f: Callable, t_span: torch.Tensor, y0: torch.Tensor, options: Opt
 
 def ode3_sde_em(f: Callable, t_span: torch.Tensor, y0: torch.Tensor, options: Optional[Dict[str, Any]] = None) -> Tuple[torch.Tensor, torch.Tensor, Dict, Dict]:
     solver = 'EM'
-    sf = sde3_solver(f, t_span, y0, solver, options)
+    fix_step = bool((options or {}).get('fix_step', False))
+    if fix_step:
+        sf = sde3_fix_solver(f, t_span, y0, solver, options)
+    else:
+        sf = sde3_solver(f, t_span, y0, solver, options)
     bar = Wait_bar(t_span, sf.waitbar)
     t, y, stats, err_info = sf.run(bar)
     return t, y, stats, err_info

@@ -4,12 +4,18 @@ import os
 import pytest
 import scipy
 
-testdata = [ # N, K, J, alpha
-    (256, 2.0, 2.0, 0.1),
-    (256, 3.0, 8.0, 0.1),
-    (256, 1.0, 2.0, 0.01),
-    (256, 1.0, 2.0, 0.05),
-    (128, 1.0, 2.0, 0.05),
+testdata = [ # N, K, J, alpha, fix_step, dh
+    (256, 2.0, 2.0, 0.1, True, 5e-2),
+    (256, 3.0, 8.0, 0.1, True, 5e-2),
+    (256, 1.0, 2.0, 0.01, True, 5e-2),
+    (256, 1.0, 2.0, 0.05, True, 5e-2),
+    (128, 1.0, 2.0, 0.05, True, 5e-2),
+
+    (256, 2.0, 2.0, 0.1, False, 5e-2),
+    (256, 3.0, 8.0, 0.1, False, 5e-2),
+    (256, 1.0, 2.0, 0.01, False, 5e-2),
+    (256, 1.0, 2.0, 0.05, False, 5e-2),
+    (128, 1.0, 2.0, 0.05, False, 5e-2),
 ]
 
 def plot_fun(N,err,mean_err,max_err):
@@ -52,8 +58,8 @@ def peak_correction(left_height,right_height,peak_height):
     return loc*epsilon
 
 # @pytest.skip(reason="Under rebuild")
-@pytest.mark.parametrize("N,K,J,alpha",testdata)
-def test_energy_damping(N,K,J,alpha):
+@pytest.mark.parametrize("N,K,J,alpha, fix_step, dh",testdata)
+def test_energy_damping(N,K,J,alpha, fix_step, dh):
     # N=256
     # K=1.0
     # J=0.5
@@ -77,7 +83,7 @@ def test_energy_damping(N,K,J,alpha):
     vars = magbox.Vars(K1=K, J=J)
 
     sf=magbox.llg3(x0,y0,z0, LT,vars,
-                   device='cpu', dtype='f64', alpha=alpha,T=T,dt=dt,rtol=1e-4)
+                   device='cpu', dtype='f64', alpha=alpha,T=T,dt=dt,rtol=1e-4, fix_step=fix_step, dh=dh)
 
     t_tc,S,*_=sf.run()
     t=t_tc.cpu().detach().numpy()
@@ -126,7 +132,7 @@ def test_energy_damping(N,K,J,alpha):
     assert mean_err<2*dw/(alpha*K)
 
 if __name__=="__main__":
-    test_energy_damping(32, 1.0, 2.0, 0.001)
+    test_energy_damping(32, 1.0, 2.0, 0.001, True, 2e-1)
 
 
 # spin_chain_test(256,1,0.5,1,50)
